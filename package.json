@@ -1,0 +1,46 @@
+{
+  "name": "aerostage-real-estate-cad",
+  "version": "1.0.0",
+  "description": "Interactive Real Estate Plot Map and CAD Layout Editor",
+  "main": "index.html",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^6.0.2",
+    "vite": "^8.0.14"
+  },
+  "keywords": [
+    "real-estate",
+    "cad",
+    "map",
+    "svg",
+    "interactive",
+    "editor"
+  ],
+  "author": "Antigravity",
+  "license": "MIT",
+  "dependencies": {
+    "@paddleocr/paddleocr-js": "^0.3.2",
+    "@react-google-maps/api": "^2.20.8",
+    "@tailwindcss/postcss": "^4.3.0",
+    "@tanstack/react-query": "^5.101.0",
+    "autoprefixer": "^10.5.0",
+    "cloudinary": "^2.6.0",
+    "cors": "^2.8.5",
+    "dotenv": "^16.6.0",
+    "express": "^5.1.0",
+    "firebase": "^10.14.0",
+    "konva": "^10.3.0",
+    "lucide-react": "^1.17.0",
+    "multer": "^2.0.0",
+    "pg": "^8.16.0",
+    "postcss": "^8.5.15",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
+    "react-konva": "^19.2.4",
+    "tailwindcss": "^4.3.0"
+  }
+}

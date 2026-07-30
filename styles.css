@@ -1,0 +1,3269 @@
+/* -------------------------------------------------------------
+ * Premium Real Estate Plot Mapping & CAD Engine Design System
+ * ------------------------------------------------------------- */
+
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap');
+
+:root {
+    /* Default to Property Docks Realtor Red Brand (#921214) */
+    --bg-main: #f8fafc;
+    --bg-surface: rgba(255, 255, 255, 0.92);
+    --bg-surface-opaque: #ffffff;
+    --bg-panel: rgba(255, 255, 255, 0.95);
+    --border-color: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --bg-input: #ffffff;
+    
+    /* Realtor Brand Red Color System */
+    --primary: #921214;
+    --primary-hover: #750d0f;
+    --primary-glow: rgba(146, 18, 20, 0.25);
+    --accent: #00a2bb;
+    --accent-glow: rgba(0, 162, 187, 0.2);
+
+    
+    /* Plot Status Colors */
+    --color-available: #10b981;
+    --color-available-glow: rgba(16, 185, 129, 0.15);
+    --color-available-border: rgba(16, 185, 129, 0.4);
+    
+    --color-reserved: #f59e0b;
+    --color-reserved-glow: rgba(245, 158, 11, 0.15);
+    --color-reserved-border: rgba(245, 158, 11, 0.4);
+    
+    --color-sold: #ef4444;
+    --color-sold-glow: rgba(239, 68, 68, 0.1);
+    --color-sold-border: rgba(239, 68, 68, 0.3);
+    
+    --color-premium: #a855f7;
+    --color-premium-glow: rgba(168, 85, 247, 0.15);
+    --color-premium-border: rgba(168, 85, 247, 0.4);
+
+    /* Rental Category Colors */
+    --color-rental-house: #3b82f6;
+    --color-rental-house-glow: rgba(59, 130, 246, 0.15);
+    --color-rental-house-border: rgba(59, 130, 246, 0.65);
+
+    --color-pg: #a855f7;
+    --color-pg-glow: rgba(168, 85, 247, 0.15);
+    --color-pg-border: rgba(168, 85, 247, 0.65);
+
+    --color-room: #f97316;
+    --color-room-glow: rgba(249, 115, 22, 0.15);
+    --color-room-border: rgba(249, 115, 22, 0.65);
+
+    --color-bogithu: #06b6d4;
+    --color-bogithu-glow: rgba(6, 182, 212, 0.15);
+    --color-bogithu-border: rgba(6, 182, 212, 0.65);
+
+    /* UI Measurements */
+    --sidebar-width: 340px;
+    --editor-width: 360px;
+    --header-height: 70px;
+    --radius-sm: 8px;
+    --radius-md: 14px;
+    --radius-lg: 20px;
+    
+    /* Animations */
+    --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+    --transition-smooth: 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    
+    /* CAD Grid Color */
+    --grid-major: rgba(118, 153, 4, 0.06);
+    --grid-minor: rgba(118, 153, 4, 0.02);
+    --road-color: rgba(118, 153, 4, 0.04);
+}
+
+/* -------------------------------------------------------------
+ * Theme Configurations
+ * ------------------------------------------------------------- */
+
+/* Dark Mode (Property Docks Red - Dark) */
+[data-theme="property_docs"] {
+    --bg-main: #0f0808;
+    --bg-surface: rgba(30, 18, 18, 0.7);
+    --bg-surface-opaque: #1f1212;
+    --bg-panel: rgba(24, 14, 14, 0.85);
+    --border-color: rgba(146, 18, 20, 0.15);
+    --border-hover: rgba(146, 18, 20, 0.3);
+    --text-primary: #f8f2f2;
+    --text-secondary: #d2c0c0;
+    --text-muted: #927b7b;
+    --bg-input: rgba(0, 0, 0, 0.25);
+    
+    --primary: #c41618;
+    --primary-glow: rgba(196, 22, 24, 0.25);
+    --accent: #00a2bb;
+    --accent-glow: rgba(0, 162, 187, 0.15);
+    
+    --grid-major: rgba(146, 18, 20, 0.04);
+    --grid-minor: rgba(146, 18, 20, 0.015);
+    --road-color: rgba(146, 18, 20, 0.03);
+}
+
+/* Light Mode (Property Docks Red - Light) */
+[data-theme="property-docs-light"] {
+    --bg-main: #f8fafc;
+    --bg-surface: rgba(255, 255, 255, 0.92);
+    --bg-surface-opaque: #ffffff;
+    --bg-panel: rgba(255, 255, 255, 0.95);
+    --border-color: #e2e8f0;
+    --border-hover: #cbd5e1;
+    --text-primary: #0f172a;
+    --text-secondary: #334155;
+    --text-muted: #64748b;
+    --bg-input: #ffffff;
+    
+    --primary: #921214;
+    --primary-glow: rgba(146, 18, 20, 0.2);
+    --accent: #00a2bb;
+    --accent-glow: rgba(0, 162, 187, 0.12);
+    
+    --grid-major: rgba(146, 18, 20, 0.06);
+    --grid-minor: rgba(146, 18, 20, 0.02);
+    --road-color: rgba(146, 18, 20, 0.04);
+}
+
+/* -------------------------------------------------------------
+ * Core App Reset
+ * ------------------------------------------------------------- */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: 'Outfit', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    background-color: var(--bg-main);
+    color: var(--text-primary);
+    overflow: hidden;
+    height: 100vh;
+    width: 100vw;
+    display: flex;
+    flex-direction: column;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: var(--radius-sm);
+}
+::-webkit-scrollbar-thumb:hover {
+    background: var(--border-hover);
+}
+
+/* -------------------------------------------------------------
+ * Layout Structure
+ * ------------------------------------------------------------- */
+header {
+    height: var(--header-height);
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-color);
+    backdrop-filter: blur(12px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 24px;
+    z-index: 100;
+}
+
+.logo-container {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.logo-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 15px var(--primary-glow);
+    color: white;
+}
+
+.logo-text h1 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    background: linear-gradient(to right, var(--text-primary), var(--text-secondary));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.logo-text p {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.header-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+}
+
+/* App Workspace Container */
+.app-container {
+    flex: 1;
+    display: flex;
+    height: calc(100vh - var(--header-height));
+    position: relative;
+    overflow: hidden;
+}
+
+/* -------------------------------------------------------------
+ * Sidebar Panels
+ * ------------------------------------------------------------- */
+.sidebar {
+    width: var(--sidebar-width);
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    z-index: 80;
+    overflow-y: auto;
+    flex-shrink: 0 !important;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    padding: 24px;
+    gap: 16px;
+}
+
+.editor-panel {
+    position: absolute;
+    top: 48px;
+    right: 0;
+    height: calc(100% - 48px);
+    width: var(--editor-width);
+    background: var(--bg-panel);
+    border-left: 1px solid var(--border-color);
+    backdrop-filter: blur(16px);
+    display: flex;
+    flex-direction: column;
+    z-index: 80;
+    overflow-y: auto;
+    transition: transform var(--transition-smooth), opacity var(--transition-smooth);
+}
+
+.editor-panel.collapsed {
+    transform: translateX(100%);
+    opacity: 0;
+    pointer-events: none;
+}
+
+.panel-header {
+    padding: 20px 24px;
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+.panel-header h2 {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.panel-content {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    flex: 1;
+}
+
+/* -------------------------------------------------------------
+ * Controls & Forms
+ * ------------------------------------------------------------- */
+.search-filter-box {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.search-wrapper {
+    position: relative;
+}
+
+.search-wrapper input {
+    width: 100%;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px 10px 38px;
+    color: var(--text-primary);
+    font-size: 0.9rem;
+    transition: border-color var(--transition-fast);
+}
+
+.search-wrapper input:focus {
+    border-color: var(--primary);
+    outline: none;
+}
+
+.search-wrapper svg {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-muted);
+    pointer-events: none;
+}
+
+.filter-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+}
+
+.btn-filter {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    cursor: pointer;
+    font-weight: 500;
+    transition: all var(--transition-fast);
+}
+
+.btn-filter:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.btn-filter.active {
+    background: var(--primary-glow);
+    border-color: var(--primary);
+    color: var(--text-primary);
+}
+
+/* Form Groups */
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+.form-group label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+}
+
+.form-group input, .form-group select, .form-group textarea {
+    background: var(--bg-input);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px 12px;
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    transition: all var(--transition-fast);
+    width: 100%;
+}
+
+.form-group textarea {
+    min-height: 80px;
+    resize: vertical;
+}
+
+.form-group input:focus, .form-group select:focus, .form-group textarea:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-glow);
+    outline: none;
+}
+
+/* Dynamic status select styling */
+.status-select {
+    font-weight: 600 !important;
+    transition: all var(--transition-fast) !important;
+}
+.status-select-available {
+    background-color: var(--color-available-glow) !important;
+    color: var(--color-available) !important;
+    border-color: var(--color-available-border) !important;
+}
+.status-select-reserved {
+    background-color: var(--color-reserved-glow) !important;
+    color: var(--color-reserved) !important;
+    border-color: var(--color-reserved-border) !important;
+}
+.status-select-sold {
+    background-color: var(--color-sold-glow) !important;
+    color: var(--color-sold) !important;
+    border-color: var(--color-sold-border) !important;
+}
+.status-select-premium {
+    background-color: var(--color-premium-glow) !important;
+    color: var(--color-premium) !important;
+    border-color: var(--color-premium-border) !important;
+}
+.status-select option {
+    background: var(--bg-surface-opaque) !important;
+    color: var(--text-primary) !important;
+}
+
+.form-group input:disabled, .form-group select:disabled, .form-group textarea:disabled,
+.form-group input[readonly] {
+    opacity: 0.6;
+    background: rgba(0, 0, 0, 0.05) !important;
+    border-style: dashed;
+    cursor: not-allowed;
+    box-shadow: none !important;
+}
+
+.form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+/* Status Pill Styling */
+.status-indicator {
+    padding: 3px 8px;
+    border-radius: 20px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    width: fit-content;
+}
+
+.status-indicator::before {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+}
+
+.status-available {
+    background: var(--color-available-glow);
+    color: var(--color-available);
+    border: 1px solid var(--color-available-border);
+}
+.status-available::before { background: var(--color-available); }
+
+.status-reserved {
+    background: var(--color-reserved-glow);
+    color: var(--color-reserved);
+    border: 1px solid var(--color-reserved-border);
+}
+.status-reserved::before { background: var(--color-reserved); }
+
+.status-sold {
+    background: var(--color-sold-glow);
+    color: var(--color-sold);
+    border: 1px solid var(--color-sold-border);
+}
+.status-sold::before { background: var(--color-sold); }
+
+.status-premium {
+    background: var(--color-premium-glow);
+    color: var(--color-premium);
+    border: 1px solid var(--color-premium-border);
+}
+.status-premium::before { background: var(--color-premium); }
+
+.status-rental_house {
+    background: var(--color-rental-house-glow);
+    color: var(--color-rental-house);
+    border: 1px solid var(--color-rental-house-border);
+}
+.status-rental_house::before { background: var(--color-rental-house); }
+
+.status-pg {
+    background: var(--color-pg-glow);
+    color: var(--color-pg);
+    border: 1px solid var(--color-pg-border);
+}
+.status-pg::before { background: var(--color-pg); }
+
+.status-room {
+    background: var(--color-room-glow);
+    color: var(--color-room);
+    border: 1px solid var(--color-room-border);
+}
+.status-room::before { background: var(--color-room); }
+
+.status-bogithu {
+    background: var(--color-bogithu-glow);
+    color: var(--color-bogithu);
+    border: 1px solid var(--color-bogithu-border);
+}
+.status-bogithu::before { background: var(--color-bogithu); }
+
+/* -------------------------------------------------------------
+ * Metrics Dashboard Cards
+ * ------------------------------------------------------------- */
+.metrics-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+}
+
+.metric-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    position: relative;
+    overflow: hidden;
+}
+
+.metric-card::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 4px;
+    height: 100%;
+    background: linear-gradient(to bottom, var(--primary), var(--accent));
+}
+
+.metric-card h3 {
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.metric-value {
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.metric-sub {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* -------------------------------------------------------------
+ * Map Workspace (Canvas) Area
+ * ------------------------------------------------------------- */
+.map-workspace {
+    flex: 1;
+    position: relative;
+    background-color: var(--bg-main);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    cursor: default;
+}
+
+.map-workspace.tool-select {
+    cursor: default;
+}
+
+.map-workspace.tool-pan {
+    cursor: grab;
+}
+
+.map-workspace.tool-pan:active {
+    cursor: grabbing;
+}
+
+.map-workspace.tool-pan .plot-polygon {
+    cursor: grab;
+}
+
+.map-workspace.tool-pan .plot-polygon:active {
+    cursor: grabbing;
+}
+
+.map-svg-container {
+    width: 100%;
+    height: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    user-select: none;
+}
+
+/* Interactive SVG Elements */
+#map-grid-pattern rect {
+    fill: url(#cad-grid);
+}
+
+.road-overlay {
+    fill: var(--road-color);
+    stroke: var(--border-color);
+    stroke-width: 1.5px;
+}
+
+/* Road Label styling */
+.road-label {
+    fill: var(--text-muted);
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-family: 'Outfit', sans-serif;
+    pointer-events: none;
+}
+
+/* Plot SVG Polygons */
+.plot-polygon {
+    fill: transparent;
+    stroke: rgba(99, 102, 241, 0.2);
+    stroke-width: 2.2px;
+    transition: stroke var(--transition-fast), fill var(--transition-fast), stroke-width var(--transition-fast);
+    cursor: pointer;
+}
+
+/* Color states on map */
+.plot-polygon.state-available {
+    fill: rgba(16, 185, 129, 0.08);
+    stroke: rgba(16, 185, 129, 0.65);
+}
+.plot-polygon.state-available:hover {
+    fill: rgba(16, 185, 129, 0.22);
+    stroke: rgba(16, 185, 129, 0.85);
+}
+
+.plot-polygon.state-reserved {
+    fill: rgba(245, 158, 11, 0.08);
+    stroke: rgba(245, 158, 11, 0.65);
+}
+.plot-polygon.state-reserved:hover {
+    fill: rgba(245, 158, 11, 0.22);
+    stroke: rgba(245, 158, 11, 0.85);
+}
+
+.plot-polygon.state-sold {
+    fill: rgba(239, 68, 68, 0.22);
+    stroke: rgba(239, 68, 68, 0.8);
+}
+.plot-polygon.state-sold:hover {
+    fill: rgba(239, 68, 68, 0.38);
+    stroke: rgba(239, 68, 68, 0.95);
+}
+
+.plot-polygon.state-premium {
+    fill: rgba(168, 85, 247, 0.08);
+    stroke: rgba(168, 85, 247, 0.65);
+}
+.plot-polygon.state-premium:hover {
+    fill: rgba(168, 85, 247, 0.22);
+    stroke: rgba(168, 85, 247, 0.85);
+}
+
+.plot-polygon.class-rental_house {
+    fill: var(--color-rental-house-glow);
+    stroke: var(--color-rental-house-border);
+}
+.plot-polygon.class-rental_house:hover {
+    fill: rgba(59, 130, 246, 0.3);
+    stroke: rgba(59, 130, 246, 0.95);
+}
+
+.plot-polygon.class-pg {
+    fill: var(--color-pg-glow);
+    stroke: var(--color-pg-border);
+}
+.plot-polygon.class-pg:hover {
+    fill: rgba(168, 85, 247, 0.3);
+    stroke: rgba(168, 85, 247, 0.95);
+}
+
+.plot-polygon.class-room {
+    fill: var(--color-room-glow);
+    stroke: var(--color-room-border);
+}
+.plot-polygon.class-room:hover {
+    fill: rgba(249, 115, 22, 0.3);
+    stroke: rgba(249, 115, 22, 0.95);
+}
+
+.plot-polygon.class-bogithu {
+    fill: var(--color-bogithu-glow);
+    stroke: var(--color-bogithu-border);
+}
+.plot-polygon.class-bogithu:hover {
+    fill: rgba(6, 182, 212, 0.3);
+    stroke: rgba(6, 182, 212, 0.95);
+}
+
+/* Active Selected Plot highlight with pulse animation */
+@keyframes select-pulse {
+    0% {
+        stroke-width: 3.5px;
+        filter: drop-shadow(0 0 6px var(--primary-glow));
+    }
+    50% {
+        stroke-width: 5.5px;
+        filter: drop-shadow(0 0 14px var(--primary));
+    }
+    100% {
+        stroke-width: 3.5px;
+        filter: drop-shadow(0 0 6px var(--primary-glow));
+    }
+}
+
+.plot-polygon.selected {
+    fill: var(--primary-glow) !important;
+    stroke: var(--primary) !important;
+    stroke-width: 3.5px !important;
+    filter: drop-shadow(0 0 8px var(--primary-glow));
+    animation: select-pulse 2s infinite ease-in-out;
+}
+
+.plot-polygon.selected.state-sold {
+    fill: rgba(239, 68, 68, 0.35) !important;
+}
+.plot-polygon.selected.state-available {
+    fill: rgba(16, 185, 129, 0.18) !important;
+}
+.plot-polygon.selected.state-reserved {
+    fill: rgba(245, 158, 11, 0.18) !important;
+}
+.plot-polygon.selected.state-premium {
+    fill: rgba(168, 85, 247, 0.18) !important;
+}
+
+/* Plot Text Labels */
+.plot-label {
+    fill: var(--text-primary);
+    font-size: 16px;
+    font-weight: 700;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    paint-order: stroke fill;
+    stroke: var(--bg-main);
+    stroke-width: 4px;
+    stroke-linejoin: round;
+    transition: fill var(--transition-fast), font-size var(--transition-fast);
+}
+
+.plot-label-sub {
+    fill: var(--text-muted);
+    font-size: 10px;
+    font-weight: 600;
+    pointer-events: none;
+    text-anchor: middle;
+    dominant-baseline: middle;
+    paint-order: stroke fill;
+    stroke: var(--bg-main);
+    stroke-width: 3px;
+    stroke-linejoin: round;
+}
+
+/* When Zoom is too small, hide subtexts automatically via CSS */
+.map-scale-low .plot-label-sub {
+    display: none;
+}
+
+/* Vertex Boundary Drag Handles */
+.vertex-handle {
+    fill: #ffffff;
+    stroke: var(--primary);
+    stroke-width: 2px;
+    cursor: move;
+    transition: stroke-width var(--transition-fast), r var(--transition-fast);
+}
+
+.vertex-handle:hover {
+    fill: var(--primary);
+    stroke: #ffffff;
+    stroke-width: 3px;
+    r: 8px !important;
+    filter: drop-shadow(0 0 5px var(--primary));
+}
+
+.vertex-handle.active {
+    fill: var(--accent);
+    stroke: #ffffff;
+    r: 9px !important;
+}
+
+/* -------------------------------------------------------------
+ * Floating Toolbars & Controls
+ * ------------------------------------------------------------- */
+.floating-toolbar {
+    position: absolute;
+    top: 72px;
+    left: 20px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 12px 8px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(12px);
+    z-index: 70;
+}
+
+.toolbar-group {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 10px;
+    margin-bottom: 2px;
+}
+
+.toolbar-group:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+    margin-bottom: 0;
+}
+
+.btn-icon {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    position: relative;
+}
+
+.btn-icon:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.btn-icon.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 10px var(--primary-glow);
+}
+
+/* Tooltip standard hovering visual */
+.custom-tooltip {
+    position: fixed;
+    background: var(--bg-surface-opaque);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    pointer-events: none;
+    z-index: 1000;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    backdrop-filter: blur(8px);
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    opacity: 0;
+    transition: opacity var(--transition-fast) ease;
+}
+
+.custom-tooltip.visible {
+    opacity: 1;
+}
+
+.tooltip-title {
+    font-weight: 700;
+    font-size: 0.95rem;
+    border-bottom: 1px solid var(--border-color);
+    padding-bottom: 4px;
+    margin-bottom: 2px;
+}
+
+/* Quick Access Plot List inside Sidebar */
+.plot-list-container {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    max-height: 380px;
+    overflow-y: auto;
+    padding-right: 4px;
+}
+
+.plot-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px 14px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.plot-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-hover);
+}
+
+.plot-item.selected {
+    background: var(--primary-glow);
+    border-color: var(--primary);
+}
+
+.plot-item-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.plot-item-id {
+    font-weight: 600;
+    font-size: 0.9rem;
+    color: var(--text-primary);
+}
+
+.plot-item-area {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+/* Standard Button */
+.btn-primary {
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    border: none;
+    color: white;
+    padding: 12px 18px;
+    border-radius: var(--radius-sm);
+    font-weight: 600;
+    cursor: pointer;
+    transition: transform var(--transition-fast), box-shadow var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+.btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px var(--primary-glow);
+}
+
+.btn-primary:active {
+    transform: translateY(1px);
+}
+
+.btn-secondary {
+    background: rgba(255, 255, 255, 0.04);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 16px;
+    border-radius: var(--radius-sm);
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+}
+
+.btn-secondary:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-hover);
+}
+
+/* Theme Selector Select styling */
+.theme-selector {
+    background: rgba(0, 0, 0, 0.25);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    cursor: pointer;
+    outline: none;
+    transition: all var(--transition-fast);
+}
+
+.theme-selector:hover {
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+/* Empty State Styling for selected plot */
+.empty-selection-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 40px 20px;
+    color: var(--text-muted);
+    gap: 16px;
+    flex: 1;
+}
+
+.empty-selection-state svg {
+    color: var(--border-hover);
+}
+
+/* Import / Export utility block */
+.import-export-section {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+}
+
+/* CAD Hatch Patterns Overlay */
+.cad-hatch {
+    fill: url(#diagonal-hatch) !important;
+}
+
+/* Compass and Scale Controls (Bottom Left Overlay) */
+.map-indicator-overlay {
+    position: absolute;
+    bottom: 24px;
+    left: 24px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    backdrop-filter: blur(12px);
+    z-index: 70;
+}
+
+.compass-container {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+}
+
+.compass-icon {
+    width: 24px;
+    height: 24px;
+    border: 1.5px solid var(--border-color);
+    border-radius: 50%;
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.compass-pointer {
+    width: 2px;
+    height: 10px;
+    background: #ef4444; /* North pointer red */
+    position: absolute;
+    top: 2px;
+    border-radius: 1px;
+}
+
+.scale-container {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.75rem;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border-color);
+    padding-top: 6px;
+    margin-top: 2px;
+}
+
+.scale-bar {
+    width: 60px;
+    height: 4px;
+    background: var(--text-muted);
+    position: relative;
+}
+
+.scale-bar::before, .scale-bar::after {
+    content: '';
+    position: absolute;
+    width: 1px;
+    height: 8px;
+    background: var(--text-muted);
+    top: -2px;
+}
+.scale-bar::before { left: 0; }
+.scale-bar::after { right: 0; }
+
+/* -------------------------------------------------------------
+ * Toast Notifications
+ * ------------------------------------------------------------- */
+.toast-container {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    z-index: 10000;
+}
+
+.toast {
+    background: var(--bg-surface-opaque);
+    border: 1px solid var(--border-color);
+    border-left: 4px solid var(--primary);
+    border-radius: var(--radius-sm);
+    padding: 12px 18px;
+    color: var(--text-primary);
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transform: translateY(20px);
+    opacity: 0;
+    transition: all var(--transition-smooth);
+}
+
+.toast.visible {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.toast-success { border-left-color: var(--color-available); }
+.toast-warning { border-left-color: var(--color-reserved); }
+.toast-error { border-left-color: var(--color-sold); }
+
+/* Quick responsive fixes */
+@media(max-width: 1024px) {
+    .app-container {
+        flex-direction: column;
+        overflow-y: auto;
+    }
+    .sidebar, .editor-panel {
+        width: 100% !important;
+        height: auto !important;
+        border-right: none;
+        border-bottom: 1px solid var(--border-color);
+    }
+    .map-workspace {
+        height: 500px;
+        min-height: 500px;
+    }
+}
+
+/* CAD Laser contour drawing animation for 2D shape preview */
+@keyframes draw-contour {
+    from {
+        stroke-dashoffset: 800;
+    }
+    to {
+        stroke-dashoffset: 0;
+    }
+}
+
+.animated-contour {
+    stroke-dasharray: 800;
+    stroke-dashoffset: 800;
+    animation: draw-contour 1.2s cubic-bezier(0.4, 0, 0.2, 1) forwards;
+}
+
+/* Far-Left Navigation Sidebar */
+.nav-sidebar {
+    width: 240px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    padding: 24px 16px;
+    gap: 20px;
+    z-index: 90;
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                padding 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                opacity 0.2s cubic-bezier(0.4, 0, 0.2, 1),
+                border 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-sidebar.collapsed {
+    width: 70px !important;
+    padding: 24px 10px !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    overflow: hidden !important;
+}
+
+.nav-brand {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.nav-brand-icon {
+    width: 38px;
+    height: 38px;
+    border-radius: var(--radius-sm);
+    background: linear-gradient(135deg, var(--primary), var(--accent));
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 12px var(--primary-glow);
+    color: white;
+}
+
+.nav-brand-text h2 {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--text-primary);
+}
+
+.nav-brand-text p {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+}
+
+.nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    font-weight: 500;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    background: transparent;
+    border: none;
+    text-align: left;
+    width: 100%;
+}
+
+.nav-item:hover {
+    background: rgba(255, 255, 255, 0.03);
+    color: var(--text-primary);
+}
+
+.nav-item.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 12px var(--primary-glow);
+}
+
+/* Horizontal Steps Progress Banner */
+.steps-banner {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 16px;
+    padding: 16px 24px;
+    background: rgba(15, 18, 25, 0.4);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.step-card {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    transition: border-color var(--transition-fast);
+}
+
+.step-card:hover {
+    border-color: var(--border-hover);
+}
+
+.step-badge {
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary-glow);
+    color: var(--primary);
+    font-size: 0.75rem;
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.step-card.active .step-badge {
+    background: var(--primary);
+    color: white;
+}
+
+.step-info h4 {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-transform: uppercase;
+}
+
+.step-info p {
+    font-size: 0.7rem;
+    color: var(--text-secondary);
+}
+
+/* Central Workspace Main Wrapper */
+.workspace-grid {
+    flex: 1;
+    display: flex;
+    overflow: hidden;
+}
+
+/* All Plots Grid View (Center-Right Panel) */
+.plots-grid-panel {
+    width: 340px;
+    background: var(--bg-panel);
+    border-right: 1px solid var(--border-color);
+    border-left: 1px solid var(--border-color);
+    display: flex;
+    flex-direction: column;
+    z-index: 75;
+    backdrop-filter: blur(12px);
+}
+
+.plots-grid-container {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+    padding: 16px;
+    overflow-y: auto;
+    max-height: calc(100vh - 250px);
+}
+
+.plot-grid-card {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px 6px;
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+
+.plot-grid-card:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.plot-grid-card.selected {
+    background: var(--primary);
+    border-color: var(--primary);
+    color: white;
+    box-shadow: 0 4px 10px var(--primary-glow);
+}
+
+/* Badges for selected plot properties */
+.property-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: capitalize;
+}
+.badge-available { background: var(--color-available-glow); color: var(--color-available); }
+.badge-sold { background: var(--color-sold-glow); color: var(--color-sold); }
+.badge-reserved { background: var(--color-reserved-glow); color: var(--color-reserved); }
+.badge-premium { background: var(--color-premium-glow); color: var(--color-premium); }
+
+/* --- Redesigned UI Custom Elements --- */
+
+/* Project switch profile card at bottom of navigation sidebar */
+.nav-profile-card {
+    margin-top: auto;
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 10px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.nav-profile-card:hover {
+    background: var(--bg-surface-opaque);
+    border-color: var(--border-hover);
+}
+
+.nav-profile-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 6px;
+    background: var(--primary-glow);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.nav-profile-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.nav-profile-title {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    margin-bottom: 1px;
+}
+
+.nav-profile-subtitle {
+    font-size: 0.68rem;
+    color: var(--text-muted);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.nav-profile-chevron {
+    color: var(--text-secondary);
+}
+
+/* Layouts Middle Sidebar Layout */
+.layouts-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 2px;
+    justify-content: flex-start;
+}
+
+.layouts-title {
+    font-size: 1.25rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    letter-spacing: 0.2px;
+    margin: 0;
+}
+
+.layouts-add-btn {
+    width: 22px;
+    height: 22px;
+    border-radius: 50%;
+    background: rgba(99, 102, 241, 0.15);
+    color: var(--primary);
+    border: none;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.layouts-add-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.08);
+}
+
+.layouts-subtitle {
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+    margin-bottom: 12px;
+}
+
+.layouts-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    flex: 1;
+    padding-right: 4px;
+}
+
+.layout-plot-item {
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    padding: 10px 14px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: all var(--transition-fast);
+    display: flex;
+    align-items: center;
+    border-left: 3px solid transparent;
+}
+
+.layout-plot-item:hover {
+    background: rgba(255, 255, 255, 0.05);
+    border-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
+.layout-plot-item.selected {
+    background: rgba(99, 102, 241, 0.12);
+    border-color: var(--primary);
+    border-left-color: var(--primary);
+    color: white;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15);
+}
+
+/* Canvas Header Bar Styling inside Map Workspace */
+.canvas-header-bar {
+    height: 48px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border-color);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 16px;
+    z-index: 50;
+    width: 100%;
+    position: absolute;
+    top: 0;
+    left: 0;
+    transition: opacity 0.3s cubic-bezier(0.4, 0, 0.2, 1), 
+                transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+                width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.canvas-header-bar-trigger {
+    width: 100%;
+    transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.map-workspace.has-selected-plot .canvas-header-bar,
+.map-workspace.has-selected-plot .canvas-header-bar-trigger {
+    width: calc(100% - 360px);
+}
+
+/* Auto-hiding controls transitions in MapWorkspace */
+.map-workspace .canvas-header-bar {
+    opacity: 0;
+    transform: translateY(-12px);
+    pointer-events: none;
+}
+
+.map-workspace .canvas-header-bar-trigger:hover + .canvas-header-bar,
+.map-workspace .canvas-header-bar:hover,
+.map-workspace .canvas-header-bar:focus-within {
+    opacity: 1;
+    transform: translateY(0);
+    pointer-events: auto;
+}
+
+/* Premium styling for consolidated top bar toggle buttons */
+.btn-icon-toggle {
+    transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.btn-icon-toggle:hover {
+    background: rgba(255, 255, 255, 0.08) !important;
+    color: var(--text-primary) !important;
+    transform: scale(1.1);
+}
+
+.btn-icon-toggle.active {
+    background: rgba(118, 153, 4, 0.16) !important;
+    color: var(--primary) !important;
+    box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.btn-icon-toggle.active:hover {
+    background: rgba(118, 153, 4, 0.25) !important;
+}
+
+.canvas-file-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--text-primary);
+}
+
+.canvas-controls {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.btn-canvas-action {
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 6px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.8rem;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.btn-canvas-action:hover {
+    background: rgba(255, 255, 255, 0.08);
+    border-color: var(--border-hover);
+}
+
+.zoom-control-group {
+    display: flex;
+    align-items: center;
+    background: rgba(0, 0, 0, 0.2);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-sm);
+    padding: 2px;
+}
+
+.btn-zoom-adjust {
+    background: transparent;
+    border: none;
+    color: var(--text-secondary);
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border-radius: 4px;
+    transition: all var(--transition-fast);
+}
+
+.btn-zoom-adjust:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: var(--text-primary);
+}
+
+.zoom-percent-display {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-primary);
+    padding: 0 10px;
+    min-width: 50px;
+    text-align: center;
+}
+
+/* Paper Sheet Layout on Dark CAD Canvas */
+#ref-overlay-paper {
+    fill: #ffffff;
+    stroke: rgba(255, 255, 255, 0.15);
+    stroke-width: 1.5px;
+    filter: drop-shadow(0px 12px 40px rgba(0, 0, 0, 0.35)) drop-shadow(0px 1px 3px rgba(0, 0, 0, 0.1));
+}
+
+/* Collapsible layouts sidebar styling */
+.sidebar.collapsed {
+    width: 0 !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+    border-right: none !important;
+    opacity: 0;
+    pointer-events: none;
+    overflow: hidden;
+}
+
+.sidebar.collapsed-strip {
+    width: 70px !important;
+    padding: 16px 4px !important;
+    border-right: 1px solid var(--border-color) !important;
+    opacity: 1 !important;
+    pointer-events: auto !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    flex-shrink: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+.sidebar.collapsed-strip::-webkit-scrollbar {
+    width: 3px;
+}
+.sidebar.collapsed-strip::-webkit-scrollbar-track {
+    background: transparent;
+}
+.sidebar.collapsed-strip::-webkit-scrollbar-thumb {
+    background: var(--border-color);
+    border-radius: 3px;
+}
+
+/* Toggle tab handle button */
+.sidebar-collapse-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 20px;
+    height: 38px;
+    border-radius: 0 6px 6px 0;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-left: none;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 95;
+    box-shadow: 2px 0 8px rgba(0, 0, 0, 0.18);
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.sidebar-collapse-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: translateY(-50%) scale(1.05);
+}
+
+/* Feature Classification Styles */
+.plot-polygon.class-road {
+    fill: rgba(148, 163, 184, 0.06) !important;
+    stroke: rgba(148, 163, 184, 0.45) !important;
+    stroke-dasharray: 4 4 !important;
+}
+.plot-polygon.class-road:hover {
+    fill: rgba(148, 163, 184, 0.16) !important;
+    stroke: rgba(148, 163, 184, 0.75) !important;
+}
+
+.plot-polygon.class-park {
+    fill: rgba(34, 197, 94, 0.08) !important;
+    stroke: rgba(34, 197, 94, 0.45) !important;
+}
+.plot-polygon.class-park:hover {
+    fill: rgba(34, 197, 94, 0.18) !important;
+    stroke: rgba(34, 197, 94, 0.75) !important;
+}
+
+.plot-polygon.class-amenity {
+    fill: rgba(6, 182, 212, 0.08) !important;
+    stroke: rgba(6, 182, 212, 0.45) !important;
+}
+.plot-polygon.class-amenity:hover {
+    fill: rgba(6, 182, 212, 0.18) !important;
+    stroke: rgba(6, 182, 212, 0.75) !important;
+}
+
+/* Selected override handles */
+.plot-polygon.class-road.selected,
+.plot-polygon.class-park.selected,
+.plot-polygon.class-amenity.selected {
+    fill: rgba(99, 102, 241, 0.18) !important;
+    stroke: var(--primary) !important;
+    stroke-dasharray: none !important;
+}
+
+/* Classification Badges in List */
+.classification-badge {
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 0.62rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    margin-left: auto;
+}
+.classification-badge.badge-road {
+    background: rgba(148, 163, 184, 0.1);
+    color: rgb(148, 163, 184);
+    border: 1px solid rgba(148, 163, 184, 0.2);
+}
+.classification-badge.badge-park {
+    background: rgba(34, 197, 94, 0.1);
+    color: rgb(74, 222, 128);
+    border: 1px solid rgba(34, 197, 94, 0.2);
+}
+.classification-badge.badge-amenity {
+    background: rgba(6, 182, 212, 0.1);
+    color: rgb(34, 211, 238);
+    border: 1px solid rgba(6, 182, 212, 0.2);
+}
+
+/* Floating Navigation collapse button */
+.nav-collapse-btn {
+    position: absolute;
+    top: 86px;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    z-index: 100;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    transition: left 0.3s cubic-bezier(0.4, 0, 0.2, 1), background var(--transition-fast), color var(--transition-fast), transform var(--transition-fast);
+}
+
+.nav-collapse-btn:hover {
+    background: var(--primary);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Custom Modal Overlay & Modal box styling */
+.custom-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+    animation: fadeIn 0.2s ease-out;
+}
+
+.custom-modal {
+    background: var(--bg-panel);
+    border: 1px solid var(--border-color);
+    border-radius: var(--radius-md);
+    padding: 24px;
+    width: 400px;
+    max-width: 90%;
+    box-shadow: var(--shadow-lg), 0 0 20px rgba(99, 102, 241, 0.15);
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    animation: scaleIn 0.25s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.custom-modal h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--text-primary);
+}
+
+.custom-modal p {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    line-height: 1.4;
+}
+
+.custom-modal input {
+    background: var(--bg-surface);
+    border: 1px solid var(--border-color);
+    color: var(--text-primary);
+    padding: 10px 12px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    outline: none;
+    transition: border var(--transition-fast);
+}
+
+.custom-modal input:focus {
+    border-color: var(--primary);
+}
+
+.custom-modal .modal-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    margin-top: 8px;
+}
+
+.custom-modal .modal-actions button {
+    padding: 8px 16px;
+    border-radius: var(--radius-sm);
+    font-size: 0.85rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition-fast);
+}
+
+.custom-modal .modal-actions .btn-primary {
+    background: var(--primary);
+    color: white;
+    border: none;
+}
+
+.custom-modal .modal-actions .btn-primary:hover {
+    opacity: 0.9;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes scaleIn {
+    from { transform: scale(0.9) translateY(10px); opacity: 0; }
+    to { transform: scale(1) translateY(0); opacity: 1; }
+}
+
+/* Ensure sold status always turns the plot/road/park red on the map */
+.plot-polygon.state-sold {
+    fill: rgba(239, 68, 68, 0.3) !important;
+    stroke: rgba(239, 68, 68, 0.9) !important;
+    stroke-dasharray: none !important;
+}
+.plot-polygon.state-sold:hover {
+    fill: rgba(239, 68, 68, 0.45) !important;
+    stroke: rgba(239, 68, 68, 1.0) !important;
+}
+
+.btn-zoom-adjust-icon {
+    transition: all var(--transition-fast) !important;
+}
+
+.btn-zoom-adjust-icon:hover {
+    background: rgba(255, 255, 255, 0.12) !important;
+    color: var(--text-primary) !important;
+}
+
+/* Bottom Floating Zoom Controls */
+.bottom-zoom-controls {
+    position: absolute;
+    bottom: 24px;
+    right: 24px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    z-index: 40;
+    pointer-events: auto;
+    transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.map-workspace.has-selected-plot .bottom-zoom-controls {
+    right: 384px !important;
+}
+
+.bottom-zoom-controls .btn-canvas-action {
+    background: var(--bg-panel) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 20px !important;
+    padding: 6px 14px !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+}
+
+.bottom-zoom-controls .btn-canvas-action:hover {
+    background: var(--border-color) !important;
+    border-color: var(--border-hover) !important;
+}
+
+.bottom-zoom-controls .zoom-slider-container {
+    display: flex !important;
+    align-items: center !important;
+    gap: 6px !important;
+    background: var(--bg-panel) !important;
+    backdrop-filter: blur(8px) !important;
+    border: 1px solid var(--border-color) !important;
+    border-radius: 20px !important;
+    padding: 4px 12px !important;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+.bottom-zoom-controls .zoom-label {
+    font-size: 0.72rem !important;
+    font-weight: 600 !important;
+    color: var(--text-secondary) !important;
+}
+
+.bottom-zoom-controls .btn-zoom-adjust-icon {
+    border: none !important;
+    background: transparent !important;
+    color: var(--text-secondary) !important;
+    cursor: pointer !important;
+    display: flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 24px !important;
+    height: 24px !important;
+    border-radius: 50% !important;
+}
+
+.bottom-zoom-controls .zoom-slider-input {
+    width: 80px !important;
+    height: 4px !important;
+    cursor: pointer !important;
+    padding: 0 !important;
+    margin: 0 !important;
+}
+
+.bottom-zoom-controls .zoom-percent-text {
+    font-size: 0.72rem !important;
+    font-weight: 700 !important;
+    color: var(--text-primary) !important;
+    min-width: 36px !important;
+    text-align: right !important;
+}
+
+@media (max-width: 768px) {
+    .bottom-zoom-controls {
+        bottom: 12px !important;
+        right: 12px !important;
+        gap: 6px !important;
+    }
+    .map-workspace.has-selected-plot .bottom-zoom-controls {
+        right: 12px !important;
+    }
+    .bottom-zoom-controls .btn-canvas-action span {
+        display: none !important;
+    }
+    .bottom-zoom-controls .btn-canvas-action {
+        padding: 6px !important;
+        border-radius: 50% !important;
+    }
+}
+
+
+
+
+
+/* --- MOBILE RESPONSIVENESS OVERRIDES --- */
+@media (max-width: 768px) {
+    /* Header Adjustments */
+    header {
+        padding: 0 12px !important;
+        height: 60px !important;
+    }
+    .logo-text p {
+        display: none !important; /* Hide subtitle */
+    }
+    .logo-text h1 {
+        font-size: 1.1rem !important;
+    }
+    .header-actions span, .header-actions select {
+        display: none !important; /* Hide theme selector text and dropdown on very small screens to save space */
+    }
+    .header-actions button {
+        padding: 8px !important;
+        font-size: 0 !important; /* Hide text, keep icon */
+        border-radius: 50% !important;
+        width: 36px !important;
+        height: 36px !important;
+        justify-content: center !important;
+    }
+    .header-actions button svg {
+        margin: 0 !important;
+    }
+    .app-container {
+        height: calc(100vh - 60px) !important;
+    }
+
+    /* Left Sidebar - Bottom Sheet Approach */
+    .sidebar {
+        position: absolute !important;
+        bottom: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 50vh !important;
+        z-index: 100 !important;
+        border-top: 1px solid var(--border-color) !important;
+        border-right: none !important;
+        padding: 24px 16px 16px 16px !important;
+        background: var(--bg-panel) !important;
+        border-radius: 20px 20px 0 0 !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.15) !important;
+        /* Start collapsed to a small peeking handle */
+        transform: translateY(calc(100% - 40px)) !important;
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    
+    /* Expand on hover or focus within */
+    .sidebar:hover, .sidebar:focus-within, .sidebar:active {
+        transform: translateY(0) !important;
+    }
+
+    /* Visual pull handle for bottom sheet */
+    .sidebar::before {
+        content: '';
+        position: absolute;
+        top: 10px;
+        left: 50%;
+        transform: translateX(-50%);
+        width: 40px;
+        height: 5px;
+        background: var(--border-color);
+        border-radius: 10px;
+    }
+
+    /* Right Editor Panel - Full Bottom Overlay */
+    .editor-panel {
+        width: 100% !important;
+        top: auto !important;
+        bottom: 0 !important;
+        height: 60vh !important;
+        border-left: none !important;
+        border-top: 1px solid var(--border-color) !important;
+        border-radius: 20px 20px 0 0 !important;
+        z-index: 120 !important;
+        box-shadow: 0 -10px 30px rgba(0, 0, 0, 0.3) !important;
+        transform: translateY(100%) !important; /* hidden by default */
+        transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+    }
+    .editor-panel:not(.collapsed) {
+        transform: translateY(0) !important; /* Slide up when active */
+    }
+
+    /* Make Forms stack nicely in the panels */
+    .form-row, .metrics-grid {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+
+    /* Map Workspace should fill everything */
+    .map-workspace {
+        position: absolute !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100% !important;
+        height: 100% !important;
+        z-index: 10 !important;
+    }
+
+    /* Floating Toolbar - Horizontal at top */
+    .floating-toolbar {
+        top: 12px !important;
+        left: 50% !important;
+        transform: translateX(-50%) !important;
+        flex-direction: row !important;
+        border-radius: 30px !important;
+        padding: 6px 12px !important;
+        width: auto !important;
+        max-width: 90% !important;
+        overflow-x: auto !important;
+    }
+    .toolbar-group {
+        flex-direction: row !important;
+        border-bottom: none !important;
+        border-right: 1px solid var(--border-color) !important;
+        padding-bottom: 0 !important;
+        padding-right: 8px !important;
+        margin-bottom: 0 !important;
+        margin-right: 8px !important;
+    }
+    .toolbar-group:last-child {
+        border-right: none !important;
+        margin-right: 0 !important;
+        padding-right: 0 !important;
+    }
+    .btn-icon {
+        width: 32px !important;
+        height: 32px !important;
+    }
+    .btn-icon svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    /* Adjust bottom zoom controls position so they don't overlap sidebar peak */
+    .bottom-zoom-controls {
+        bottom: 50px !important; /* above the 40px peak */
+        right: 12px !important;
+        background: var(--bg-panel) !important;
+        padding: 4px 8px !important;
+        border-radius: 20px !important;
+    }
+    .map-workspace.has-selected-plot .bottom-zoom-controls {
+        bottom: 60vh !important; /* Push up when editor panel is open */
+        transition: bottom 0.3s ease !important;
+    }
+}
+
+/* Hide Google Maps Error Dialog */
+.gm-err-container, .gm-err-content, .gm-err-icon, .gm-err-message, .gm-err-title {
+    display: none !important;
+}
+
+/* =============================================================
+   REALTOR.CA BRANDED PROPERTY DOCKS STYLES (#921214)
+   ============================================================= */
+
+/* Top Red Header Bar */
+.realtor-header {
+    background-color: var(--primary);
+    color: #ffffff;
+    height: 60px;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    z-index: 1000;
+    position: relative;
+}
+
+.realtor-logo-box {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    text-decoration: none;
+}
+
+.realtor-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 0.88rem;
+    font-weight: 500;
+}
+
+.realtor-top-action-btn {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.realtor-top-action-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.realtor-badge {
+    background: rgba(255, 255, 255, 0.25);
+    color: #ffffff;
+    font-size: 0.75rem;
+    padding: 2px 6px;
+    border-radius: 10px;
+    font-weight: 700;
+}
+
+/* Sub Navigation Bar */
+.realtor-subnav {
+    background: #ffffff;
+    height: 48px;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 24px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: #334155;
+    z-index: 999;
+}
+
+.realtor-subnav-links {
+    display: flex;
+    align-items: center;
+    gap: 28px;
+    height: 100%;
+}
+
+.realtor-subnav-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    height: 100%;
+    cursor: pointer;
+    position: relative;
+    color: #1e293b;
+    transition: color 0.2s ease;
+    border-bottom: 3px solid transparent;
+}
+
+.realtor-subnav-item:hover, .realtor-subnav-item.active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* Realtor Search Bar & Residential/Commercial Selector */
+.realtor-search-container {
+    background: #ffffff;
+    border-radius: 8px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.12);
+    padding: 12px;
+    margin: 16px auto;
+    max-width: 1100px;
+    border: 1px solid #e2e8f0;
+}
+
+.realtor-type-tabs {
+    display: flex;
+    gap: 2px;
+    margin-bottom: 12px;
+}
+
+.realtor-type-tab {
+    padding: 8px 20px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-top-left-radius: 6px;
+    border-top-right-radius: 6px;
+    cursor: pointer;
+    border: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    transition: all 0.2s ease;
+}
+
+.realtor-type-tab.residential {
+    background: #00a2bb;
+    color: #ffffff;
+}
+
+.realtor-type-tab.commercial {
+    background: #333333;
+    color: #ffffff;
+}
+
+.realtor-type-tab.inactive {
+    background: #f1f5f9;
+    color: #64748b;
+}
+
+.realtor-type-tab.inactive:hover {
+    background: #e2e8f0;
+    color: #1e293b;
+}
+
+/* Floating Bar Inputs Grid */
+.realtor-search-bar-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr 1fr 1fr auto auto auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.realtor-input, .realtor-select {
+    width: 100%;
+    padding: 10px 14px;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    font-size: 0.9rem;
+    color: #0f172a;
+    background: #ffffff;
+    outline: none;
+    transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.realtor-input:focus, .realtor-select:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 162, 187, 0.15);
+}
+
+.btn-realtor-search {
+    background: var(--green-search);
+    color: #ffffff;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 700;
+    font-size: 0.95rem;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    transition: background 0.2s ease;
+}
+
+.btn-realtor-search:hover {
+    background: var(--green-search-hover);
+}
+
+.btn-realtor-filter {
+    background: #f1f5f9;
+    color: #0f172a;
+    border: 1px solid #cbd5e1;
+    padding: 10px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    font-size: 0.9rem;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.btn-realtor-filter:hover {
+    background: #e2e8f0;
+    border-color: #94a3b8;
+}
+
+/* Map Hover & Click InfoWindow Popup Card */
+.realtor-map-popup {
+    width: 290px;
+    background: #ffffff;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.25);
+    border: 1px solid #e2e8f0;
+    font-family: inherit;
+}
+
+.realtor-popup-img-wrap {
+    position: relative;
+    height: 165px;
+    width: 100%;
+    background: #000;
+}
+
+.realtor-popup-img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.realtor-popup-badge {
+    position: absolute;
+    bottom: 8px;
+    left: 8px;
+    background: rgba(0, 0, 0, 0.65);
+    color: #ffffff;
+    font-size: 0.72rem;
+    padding: 3px 8px;
+    border-radius: 4px;
+    backdrop-filter: blur(4px);
+}
+
+.realtor-popup-fav-btn {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255, 255, 255, 0.85);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    transition: transform 0.2s ease;
+}
+
+.realtor-popup-fav-btn:hover {
+    transform: scale(1.1);
+}
+
+.realtor-popup-body {
+    padding: 12px;
+}
+
+.realtor-popup-price {
+    font-size: 1.3rem;
+    font-weight: 800;
+    color: var(--primary);
+    margin-bottom: 2px;
+}
+
+.realtor-popup-address {
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #1e293b;
+    margin-bottom: 6px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.realtor-popup-specs {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-size: 0.8rem;
+    color: #64748b;
+    font-weight: 500;
+}
+
+/* Property Detail View Modal */
+.realtor-detail-modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.75);
+    z-index: 2000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+    backdrop-filter: blur(4px);
+}
+
+.realtor-detail-modal-content {
+    background: #ffffff;
+    border-radius: 12px;
+    max-width: 1100px;
+    width: 100%;
+    max-height: 92vh;
+    overflow-y: auto;
+    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3);
+    position: relative;
+}
+
+.realtor-gallery-grid {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    grid-template-rows: 180px 180px;
+    gap: 8px;
+    margin: 16px 0;
+}
+
+.realtor-gallery-main {
+    grid-column: 1 / 2;
+    grid-row: 1 / 3;
+    height: 100%;
+    border-radius: 8px 0 0 8px;
+    overflow: hidden;
+    position: relative;
+}
+
+.realtor-gallery-item {
+    height: 100%;
+    overflow: hidden;
+    position: relative;
+}
+
+.realtor-gallery-item img, .realtor-gallery-main img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.3s ease;
+}
+
+.realtor-gallery-item:hover img, .realtor-gallery-main:hover img {
+    transform: scale(1.03);
+}
+
+.realtor-gallery-overlay-badge {
+    position: absolute;
+    bottom: 12px;
+    right: 12px;
+    background: rgba(0, 0, 0, 0.75);
+    color: #ffffff;
+    font-weight: 700;
+    font-size: 0.85rem;
+    padding: 6px 12px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+/* Showing CTA Card */
+.realtor-cta-card {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 20px;
+    text-align: center;
+}
+
+.btn-request-showing {
+    background: #00a2bb;
+    color: #ffffff;
+    border: none;
+    padding: 12px 24px;
+    width: 100%;
+    border-radius: 8px;
+    font-weight: 700;
+    font-size: 1rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    box-shadow: 0 4px 12px rgba(0, 162, 187, 0.3);
+}
+
+.btn-request-showing:hover {
+    background: #00879c;
+}
+
+/* =============================================================
+   REALTOR.CA HEADER & NAVIGATION
+   ============================================================= */
+.realtor-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #921214;
+    color: #ffffff;
+    padding: 0 24px;
+    height: 52px;
+    width: 100%;
+    flex-shrink: 0;
+    z-index: 200;
+}
+
+.realtor-logo-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.realtor-top-actions {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #ffffff;
+}
+
+.realtor-top-action-btn {
+    background: transparent;
+    border: none;
+    color: #ffffff;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 10px;
+    border-radius: 6px;
+    transition: background 0.2s ease;
+}
+
+.realtor-top-action-btn:hover {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.realtor-subnav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    padding: 0 24px;
+    height: 44px;
+    width: 100%;
+    flex-shrink: 0;
+    z-index: 190;
+}
+
+.realtor-subnav-links {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    height: 100%;
+}
+
+.realtor-subnav-item {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 0 20px;
+    height: 100%;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: #334155;
+    cursor: pointer;
+    border-bottom: 3px solid transparent;
+    transition: all 0.2s ease;
+}
+
+.realtor-subnav-item:hover {
+    color: #921214;
+    border-bottom-color: #921214;
+}
+
+.realtor-subnav-item.active {
+    color: #921214;
+    border-bottom-color: #921214;
+}
+
+/* =============================================================
+   REALTOR HERO SEARCH BOX
+   ============================================================= */
+.realtor-hero-search-box {
+    background: #ffffff;
+    border-radius: 40px;
+    padding: 6px 8px 6px 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+    max-width: 780px;
+    width: 90%;
+    margin: 0 auto;
+    box-sizing: border-box;
+}
+
+.realtor-hero-search-input-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    position: relative;
+}
+
+.realtor-hero-search-input {
+    flex: 1;
+    width: 100%;
+    border: none;
+    outline: none;
+    background: transparent;
+    padding: 12px 18px;
+    font-size: 0.95rem;
+    color: #0f172a;
+    font-family: 'Outfit', sans-serif;
+}
+
+.realtor-hero-search-btn-green {
+    background: #82C341;
+    color: #ffffff;
+    border: none;
+    width: 46px;
+    height: 46px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: transform 0.15s ease, background 0.15s ease;
+    flex-shrink: 0;
+    margin-left: auto;
+}
+
+.realtor-hero-search-btn-green:hover {
+    background: #73b334;
+    transform: scale(1.05);
+}
+
+/* =============================================================
+   REALTOR SEARCH BAR
+   ============================================================= */
+.realtor-search-bar-wrapper {
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.04);
+    padding: 12px 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+    flex-shrink: 0;
+    z-index: 180;
+}
+
+.realtor-search-tabs {
+    display: flex;
+    gap: 0;
+}
+
+.realtor-search-tab {
+    padding: 8px 20px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    border: none;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    border-radius: 4px 4px 0 0;
+    transition: all 0.2s ease;
+}
+
+.realtor-search-tab.active {
+    background: #ffffff;
+    color: #0f172a;
+}
+
+.realtor-search-tab:not(.active) {
+    background: rgba(255,255,255,0.2);
+    color: #ffffff;
+}
+
+.realtor-search-bar-grid {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    background: #ffffff;
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.realtor-input {
+    flex: 1;
+    min-width: 220px;
+    padding: 12px 16px;
+    border: none;
+    outline: none;
+    font-size: 0.88rem;
+    color: #0f172a;
+    background: transparent;
+    font-family: 'Outfit', sans-serif;
+}
+
+.realtor-input::placeholder {
+    color: #94a3b8;
+}
+
+.realtor-select {
+    padding: 12px 12px;
+    border: none;
+    border-left: 1px solid #e2e8f0;
+    outline: none;
+    font-size: 0.82rem;
+    color: #334155;
+    background: transparent;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+    font-weight: 500;
+    min-width: 100px;
+}
+
+.realtor-select-label {
+    font-size: 0.68rem;
+    color: #64748b;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    position: absolute;
+    top: 4px;
+    left: 12px;
+}
+
+.btn-realtor-search {
+    background: #921214;
+    color: #ffffff;
+    border: none;
+    padding: 12px 16px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s ease;
+    border-left: 1px solid #e2e8f0;
+}
+
+.btn-realtor-search:hover {
+    background: #750d0f;
+}
+
+.btn-realtor-filter {
+    background: transparent;
+    color: #334155;
+    border: none;
+    border-left: 1px solid #e2e8f0;
+    padding: 12px 16px;
+    cursor: pointer;
+    font-size: 0.82rem;
+    font-weight: 600;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: background 0.2s ease;
+    white-space: nowrap;
+    font-family: 'Outfit', sans-serif;
+}
+
+.btn-realtor-filter:hover {
+    background: #f1f5f9;
+}
+
+/* =============================================================
+   RESULTS BAR (Sort + Map/List Toggle)
+   ============================================================= */
+.realtor-results-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 16px;
+    background: #ffffff;
+    border-bottom: 1px solid #e2e8f0;
+    font-size: 0.82rem;
+    flex-shrink: 0;
+}
+
+.realtor-results-count {
+    font-weight: 700;
+    color: #0f172a;
+}
+
+.realtor-sort-select {
+    padding: 6px 10px;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    font-size: 0.82rem;
+    color: #334155;
+    background: #ffffff;
+    cursor: pointer;
+    font-family: 'Outfit', sans-serif;
+}
+
+.realtor-view-toggle {
+    display: flex;
+    gap: 0;
+    border: 1px solid #e2e8f0;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.realtor-view-btn {
+    padding: 6px 14px;
+    border: none;
+    background: #ffffff;
+    color: #64748b;
+    font-size: 0.82rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-family: 'Outfit', sans-serif;
+}
+
+.realtor-view-btn.active {
+    background: #921214;
+    color: #ffffff;
+}
+
+/* =============================================================
+   MAP NUMBERED MARKERS
+   ============================================================= */
+.realtor-marker-badge {
+    background: #921214;
+    color: #ffffff;
+    font-size: 12px;
+    font-weight: 700;
+    padding: 4px 8px;
+    border-radius: 4px;
+    border: 2px solid #ffffff;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    min-width: 24px;
+    text-align: center;
+    font-family: 'Outfit', sans-serif;
+    position: relative;
+    cursor: pointer;
+    transition: transform 0.15s ease;
+}
+
+.realtor-marker-badge::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 0;
+    height: 0;
+    border-left: 5px solid transparent;
+    border-right: 5px solid transparent;
+    border-top: 6px solid #921214;
+}
+
+.realtor-marker-badge:hover {
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+/* =============================================================
+   LISTING CARD (Sidebar)
+   ============================================================= */
+.realtor-listing-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 0;
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    transition: box-shadow 0.2s ease;
+}
+
+.realtor-listing-card:hover {
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+}
+
+.realtor-listing-card-img {
+    width: 100%;
+    height: 140px;
+    object-fit: cover;
+    display: block;
+}
+
+.realtor-listing-card-body {
+    padding: 10px 12px;
+}
+
+.realtor-listing-price {
+    font-size: 1.15rem;
+    font-weight: 800;
+    color: #921214;
+    margin-bottom: 2px;
+}
+
+.realtor-listing-address {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: #0f172a;
+    margin-bottom: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.realtor-listing-location {
+    font-size: 0.78rem;
+    color: #64748b;
+    margin-bottom: 6px;
+}
+
+.realtor-listing-specs {
+    display: flex;
+    gap: 10px;
+    font-size: 0.78rem;
+    color: #334155;
+    font-weight: 500;
+    padding-top: 6px;
+    border-top: 1px solid #f1f5f9;
+}
+
+.realtor-listing-time {
+    font-size: 0.72rem;
+    color: #10b981;
+    font-weight: 600;
+    margin-top: 4px;
+}
+
+.realtor-listing-fav {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: rgba(255,255,255,0.9);
+    border: none;
+    border-radius: 50%;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+    transition: transform 0.2s ease;
+}
+
+.realtor-listing-fav:hover {
+    transform: scale(1.15);
+}
+
+/* =============================================================
+   HERO SECTION (Realtor.ca Style)
+   ============================================================= */
+.realtor-hero {
+    position: relative;
+    width: 100%;
+    min-height: 440px;
+    background-size: cover;
+    background-position: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 24px;
+}
+
+.realtor-hero-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(15, 23, 42, 0.35);
+}
+
+.realtor-hero-content {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    max-width: 800px;
+    margin-bottom: 20px;
+}
+
+.realtor-hero-title {
+    font-size: clamp(2rem, 4.5vw, 2.8rem);
+    font-weight: 800;
+    color: #ffffff;
+    margin-bottom: 24px;
+    line-height: 1.25;
+    text-shadow: 0 2px 8px rgba(0,0,0,0.5);
+}
+
+.realtor-hero-search-box {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0;
+    max-width: 720px;
+    width: 100%;
+}
+
+.realtor-hero-search-tabs {
+    display: flex;
+    gap: 0;
+}
+
+.realtor-hero-tab-residential {
+    background: #00a2bb;
+    color: #ffffff;
+    border: none;
+    padding: 10px 24px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Outfit', sans-serif;
+}
+
+.realtor-hero-tab-commercial {
+    background: #334155;
+    color: #ffffff;
+    border: none;
+    padding: 10px 24px;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 6px 6px 0 0;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-family: 'Outfit', sans-serif;
+}
+
+.realtor-hero-search-input-row {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    background: #ffffff;
+    border-radius: 36px;
+    overflow: hidden;
+    box-shadow: 0 8px 30px rgba(0,0,0,0.25);
+    padding: 4px 4px 4px 20px;
+}
+
+.realtor-hero-search-input {
+    flex: 1;
+    padding: 12px 10px;
+    border: none;
+    outline: none;
+    font-size: 1rem;
+    color: #0f172a;
+    font-family: 'Outfit', sans-serif;
+    background: transparent;
+}
+
+.realtor-hero-search-input::placeholder {
+    color: #64748b;
+    font-size: 0.92rem;
+}
+
+.realtor-hero-search-btn-green {
+    width: 52px;
+    height: 52px;
+    background: #82C341;
+    border: none;
+    border-radius: 50%;
+    color: #ffffff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background 0.2s ease, transform 0.15s ease;
+    flex-shrink: 0;
+    box-shadow: 0 2px 8px rgba(130, 195, 65, 0.4);
+}
+
+.realtor-hero-search-btn-green:hover {
+    background: #6fa934;
+    transform: scale(1.05);
+}
+
+/* Realtor CTA Banner */
+.realtor-cta-banner {
+    background: #00a2bb;
+    color: #ffffff;
+    padding: 16px 40px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 0.95rem;
+    font-weight: 600;
+    width: 100%;
+}
+
+.realtor-cta-banner-btn {
+    background: #ffffff;
+    color: #0f172a;
+    border: none;
+    padding: 8px 24px;
+    border-radius: 20px;
+    font-weight: 700;
+    font-size: 0.88rem;
+    cursor: pointer;
+    transition: background 0.2s ease;
+    font-family: 'Outfit', sans-serif;
+}
+
+.realtor-cta-banner-btn:hover {
+    background: #f1f5f9;
+}
+
