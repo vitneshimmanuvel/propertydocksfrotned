@@ -176,8 +176,11 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
 
     const [activeTab, setActiveTab] = useState('post');
     const [uploading, setUploading] = useState(false);
+    const [ownerSuggestions, setOwnerSuggestions] = useState([]);
+    const [showOwnerSuggestions, setShowOwnerSuggestions] = useState(false);
     const [formData, setFormData] = useState({
-        category: 'rental_house',
+        category: 'residential',
+        transactionType: 'for_sale',
         title: '',
         location: '',
         street: '',
@@ -185,9 +188,14 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
         locationPrivacy: 'exact',
         lat: null,
         lng: null,
+        price: '',
         rentAmount: '',
         bogithuAmount: '',
         bogithuYears: '',
+        sqft: '',
+        beds: '',
+        baths: '',
+        floors: '',
         description: '',
         landmark: '',
         contactName: '',
@@ -270,7 +278,8 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
     const handleEditProperty = (prop) => {
         setEditingId(prop.id);
         setFormData({
-            category: prop.category || 'rental_house',
+            category: prop.category || 'residential',
+            transactionType: prop.transactionType || 'for_sale',
             title: prop.title || '',
             location: prop.location || '',
             street: prop.street || '',
@@ -278,9 +287,14 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
             locationPrivacy: prop.locationPrivacy || 'exact',
             lat: prop.lat || null,
             lng: prop.lng || null,
+            price: prop.price || '',
             rentAmount: prop.rentAmount || '',
             bogithuAmount: prop.bogithuAmount || '',
             bogithuYears: prop.bogithuYears || '',
+            sqft: prop.sqft || '',
+            beds: prop.beds || '',
+            baths: prop.baths || '',
+            floors: prop.floors || '',
             description: prop.description || '',
             landmark: prop.landmark || '',
             contactName: prop.contactName || '',
@@ -350,7 +364,8 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
             
             setEditingId(null);
             setFormData({
-                category: 'rental_house',
+                category: 'residential',
+                transactionType: 'for_sale',
                 title: '',
                 location: '',
                 street: '',
@@ -358,9 +373,14 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                 locationPrivacy: 'exact',
                 lat: null,
                 lng: null,
+                price: '',
                 rentAmount: '',
                 bogithuAmount: '',
                 bogithuYears: '',
+                sqft: '',
+                beds: '',
+                baths: '',
+                floors: '',
                 description: '',
                 landmark: '',
                 contactName: '',
@@ -418,8 +438,13 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                     <button className={`nav-item ${activeTab === 'list' ? 'active' : ''}`} onClick={() => setActiveTab('list')}>
                         <List size={18} /><span>All Properties ({myProperties.length})</span>
                     </button>
-                    <button className={`nav-item ${activeTab === 'inquiries' ? 'active' : ''}`} onClick={() => setActiveTab('inquiries')}>
+                    <button className={`nav-item ${activeTab === 'inquiries' ? 'active' : ''}`} onClick={() => setActiveTab('inquiries')} style={{ position: 'relative' }}>
                         <MessageSquare size={18} /><span>Customer Inquiries ({myInquiries.length})</span>
+                        {myInquiries.filter(i => i.status === 'unread').length > 0 && (
+                            <span style={{ position: 'absolute', top: '4px', right: '8px', background: '#ef4444', color: '#fff', fontSize: '0.65rem', fontWeight: 800, borderRadius: '10px', padding: '1px 6px', minWidth: '16px', textAlign: 'center', lineHeight: '16px' }}>
+                                {myInquiries.filter(i => i.status === 'unread').length}
+                            </span>
+                        )}
                     </button>
 
                     <div style={{ marginTop: 'auto', display: 'flex', flexDirection: 'column', gap: '8px', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
@@ -454,9 +479,57 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                 <div style={{ padding: '16px', background: 'var(--bg-main)', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
                                     <h3 style={{ fontSize: '1rem', fontWeight: 700, marginBottom: '12px', color: 'var(--text-primary)' }}>Property Owner & Contact Info</h3>
                                     <div className="form-row">
-                                        <div className="form-group">
+                                        <div className="form-group" style={{ position: 'relative' }}>
                                             <label>Property Owner Name <span style={{color: '#ef4444'}}>*</span></label>
-                                            <input type="text" name="contactName" value={formData.contactName} onChange={handleInputChange} placeholder="e.g. Ramesh Kumar" required />
+                                            <input 
+                                                type="text" 
+                                                name="contactName" 
+                                                value={formData.contactName} 
+                                                onChange={(e) => {
+                                                    handleInputChange(e);
+                                                    const val = e.target.value.toLowerCase().trim();
+                                                    if (val.length >= 2) {
+                                                        const existing = (database.ownerListings || [])
+                                                            .filter(l => l.contactName && l.contactName.toLowerCase().includes(val))
+                                                            .reduce((acc, l) => {
+                                                                if (!acc.find(a => a.contactName === l.contactName && a.contactPhone === l.contactPhone)) {
+                                                                    acc.push({ contactName: l.contactName, contactPhone: l.contactPhone || '' });
+                                                                }
+                                                                return acc;
+                                                            }, []);
+                                                        setOwnerSuggestions(existing);
+                                                        setShowOwnerSuggestions(existing.length > 0);
+                                                    } else {
+                                                        setShowOwnerSuggestions(false);
+                                                    }
+                                                }}
+                                                onFocus={() => {
+                                                    if (ownerSuggestions.length > 0) setShowOwnerSuggestions(true);
+                                                }}
+                                                placeholder="e.g. Ramesh Kumar (type to find existing)" 
+                                                required 
+                                                autoComplete="off"
+                                            />
+                                            {showOwnerSuggestions && ownerSuggestions.length > 0 && (
+                                                <div style={{ position: 'absolute', top: '100%', left: 0, right: 0, background: '#fff', border: '1px solid #e2e8f0', borderRadius: '0 0 6px 6px', zIndex: 50, boxShadow: '0 4px 12px rgba(0,0,0,0.1)', maxHeight: '150px', overflowY: 'auto' }}>
+                                                    <div style={{ padding: '6px 10px', fontSize: '0.72rem', color: '#64748b', fontWeight: 700, background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>Existing Owners — Click to Select</div>
+                                                    {ownerSuggestions.map((s, i) => (
+                                                        <div 
+                                                            key={i}
+                                                            onClick={() => {
+                                                                setFormData(prev => ({ ...prev, contactName: s.contactName, contactPhone: s.contactPhone }));
+                                                                setShowOwnerSuggestions(false);
+                                                            }}
+                                                            style={{ padding: '8px 12px', cursor: 'pointer', fontSize: '0.85rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid #f1f5f9' }}
+                                                            onMouseEnter={(e) => e.target.style.background = '#f1f5f9'}
+                                                            onMouseLeave={(e) => e.target.style.background = 'transparent'}
+                                                        >
+                                                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{s.contactName}</span>
+                                                            <span style={{ fontSize: '0.75rem', color: '#64748b' }}>{s.contactPhone}</span>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
                                         </div>
                                         <div className="form-group">
                                             <label>Owner Mobile / Phone <span style={{color: '#ef4444'}}>*</span></label>
@@ -480,30 +553,119 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                     )}
                                 </div>
 
+                                {/* Property Category */}
                                 <div className="form-group">
-                                    <label>Property Category</label>
+                                    <label>Property Category <span style={{color: '#ef4444'}}>*</span></label>
                                     <select name="category" value={formData.category} onChange={handleInputChange} required>
-                                        <option value="rental_house">Rental House</option>
-                                        <option value="pg">PG Accommodation</option>
-                                        <option value="room">Room</option>
-                                        <option value="bogithu">Bogithu (Lease)</option>
+                                        <optgroup label="🏠 Residential">
+                                            <option value="residential">House / Villa</option>
+                                            <option value="apartment">Apartment / Flat</option>
+                                            <option value="independent_floor">Independent Floor</option>
+                                            <option value="land">Land / Plot</option>
+                                            <option value="farm_house">Farm House</option>
+                                            <option value="rental_house">Rental House</option>
+                                            <option value="pg">PG Accommodation</option>
+                                            <option value="room">Room</option>
+                                            <option value="bogithu">Bogithu (Lease)</option>
+                                        </optgroup>
+                                        <optgroup label="🏢 Commercial">
+                                            <option value="commercial">Commercial Building</option>
+                                            <option value="office">Office Space</option>
+                                            <option value="shop">Shop / Showroom</option>
+                                            <option value="warehouse">Warehouse / Godown</option>
+                                            <option value="industrial">Industrial Land</option>
+                                            <option value="commercial_land">Commercial Land / Plot</option>
+                                        </optgroup>
                                     </select>
                                 </div>
+
+                                {/* Transaction Type */}
                                 <div className="form-group">
-                                    <label>Property Title</label>
+                                    <label>Transaction Type <span style={{color: '#ef4444'}}>*</span></label>
+                                    <div style={{ display: 'flex', gap: '8px' }}>
+                                        {[
+                                            { value: 'for_sale', label: '🏷️ For Sale' },
+                                            { value: 'for_rent', label: '🔑 For Rent' },
+                                            { value: 'lease', label: '📋 Lease (Bogithu)' }
+                                        ].map(opt => (
+                                            <button 
+                                                type="button" 
+                                                key={opt.value}
+                                                onClick={() => setFormData(prev => ({ ...prev, transactionType: opt.value }))}
+                                                style={{
+                                                    flex: 1,
+                                                    padding: '10px 8px',
+                                                    border: formData.transactionType === opt.value ? '2px solid #921214' : '1px solid var(--border-color)',
+                                                    borderRadius: 'var(--radius-md)',
+                                                    background: formData.transactionType === opt.value ? 'rgba(146,18,20,0.08)' : 'var(--bg-main)',
+                                                    color: formData.transactionType === opt.value ? '#921214' : 'var(--text-secondary)',
+                                                    fontWeight: formData.transactionType === opt.value ? 700 : 500,
+                                                    fontSize: '0.85rem',
+                                                    cursor: 'pointer',
+                                                    transition: 'all 0.15s ease'
+                                                }}
+                                            >
+                                                {opt.label}
+                                            </button>
+                                        ))}
+                                    </div>
+                                </div>
+
+                                {/* Property Title */}
+                                <div className="form-group">
+                                    <label>Property Title <span style={{color: '#ef4444'}}>*</span></label>
                                     <input type="text" name="title" value={formData.title} onChange={handleInputChange} placeholder="e.g. 2BHK House in Main City" required />
                                 </div>
                                 
-                                {formData.category === 'bogithu' ? (
+                                {/* Price Fields — Conditional based on transaction type */}
+                                {formData.transactionType === 'for_sale' && (
+                                    <div className="form-group">
+                                        <label>Sale Price (₹) <span style={{color: '#ef4444'}}>*</span></label>
+                                        <input type="number" name="price" value={formData.price} onChange={handleInputChange} placeholder="e.g. 4500000" required />
+                                    </div>
+                                )}
+
+                                {formData.transactionType === 'for_rent' && (
+                                    <div className="form-group">
+                                        <label>Monthly Rent (₹) <span style={{color: '#ef4444'}}>*</span></label>
+                                        <input type="number" name="rentAmount" value={formData.rentAmount} onChange={handleInputChange} placeholder="e.g. 15000" required />
+                                    </div>
+                                )}
+
+                                {formData.transactionType === 'lease' && (
                                     <div className="form-row">
-                                        <div className="form-group"><label>Bulk Amount (₹)</label><input type="number" name="bogithuAmount" value={formData.bogithuAmount} onChange={handleInputChange} required /></div>
+                                        <div className="form-group"><label>Lease/Bogithu Amount (₹)</label><input type="number" name="bogithuAmount" value={formData.bogithuAmount} onChange={handleInputChange} required /></div>
                                         <div className="form-group"><label>Duration (Years)</label><input type="number" name="bogithuYears" value={formData.bogithuYears} onChange={handleInputChange} required /></div>
                                     </div>
-                                ) : (
-                                    <div className="form-group"><label>Monthly Rent (₹)</label><input type="number" name="rentAmount" value={formData.rentAmount} onChange={handleInputChange} required /></div>
                                 )}
-                                
-                                <div className="form-group"><label>Description</label><textarea name="description" value={formData.description} onChange={handleInputChange} rows="4" required style={{ resize: 'vertical' }} /></div>
+
+                                {/* Property Specs */}
+                                <div className="form-row">
+                                    <div className="form-group">
+                                        <label>Built-up Area (sqft)</label>
+                                        <input type="text" name="sqft" value={formData.sqft} onChange={handleInputChange} placeholder="e.g. 1200" />
+                                    </div>
+                                    {!['land', 'commercial_land', 'industrial'].includes(formData.category) && (
+                                        <>
+                                            <div className="form-group">
+                                                <label>Bedrooms</label>
+                                                <input type="number" name="beds" value={formData.beds} onChange={handleInputChange} placeholder="e.g. 3" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Bathrooms</label>
+                                                <input type="number" name="baths" value={formData.baths} onChange={handleInputChange} placeholder="e.g. 2" />
+                                            </div>
+                                        </>
+                                    )}
+                                    {['commercial', 'office', 'shop', 'warehouse', 'commercial_building'].includes(formData.category) && (
+                                        <div className="form-group">
+                                            <label>Floors</label>
+                                            <input type="number" name="floors" value={formData.floors} onChange={handleInputChange} placeholder="e.g. 2" />
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="form-group"><label>Description <span style={{color: '#ef4444'}}>*</span></label><textarea name="description" value={formData.description} onChange={handleInputChange} rows="4" required style={{ resize: 'vertical' }} /></div>
                             </div>
 
                             {/* Right Column: Location & Map */}
@@ -669,10 +831,25 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                 style={{ flex: 1, minWidth: '160px', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
                             >
                                 <option value="all">All Categories</option>
-                                <option value="rental_house">Rental House</option>
-                                <option value="pg">PG Accommodation</option>
-                                <option value="room">Room</option>
-                                <option value="bogithu">Bogithu (Lease)</option>
+                                <optgroup label="🏠 Residential">
+                                    <option value="residential">House / Villa</option>
+                                    <option value="apartment">Apartment / Flat</option>
+                                    <option value="independent_floor">Independent Floor</option>
+                                    <option value="land">Land / Plot</option>
+                                    <option value="farm_house">Farm House</option>
+                                    <option value="rental_house">Rental House</option>
+                                    <option value="pg">PG Accommodation</option>
+                                    <option value="room">Room</option>
+                                    <option value="bogithu">Bogithu (Lease)</option>
+                                </optgroup>
+                                <optgroup label="🏢 Commercial">
+                                    <option value="commercial">Commercial Building</option>
+                                    <option value="office">Office Space</option>
+                                    <option value="shop">Shop / Showroom</option>
+                                    <option value="warehouse">Warehouse / Godown</option>
+                                    <option value="industrial">Industrial Land</option>
+                                    <option value="commercial_land">Commercial Land / Plot</option>
+                                </optgroup>
                             </select>
                             {(adminSearchQuery || adminCategoryFilter !== 'all') && (
                                 <button 
@@ -765,31 +942,66 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                 )}
                 {activeTab === 'inquiries' && (
                     <div style={{ maxWidth: '1000px', margin: '0 auto' }}>
-                        <div style={{ marginBottom: '24px' }}>
-                            <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)' }}>Customer Lead Inquiries</h2>
-                            <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Customer contact requests and call submissions from public site</p>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '24px', flexWrap: 'wrap', gap: '16px' }}>
+                            <div>
+                                <h2 style={{ fontSize: '1.5rem', fontWeight: 800, margin: 0, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                                    Customer Inquiries
+                                    {myInquiries.filter(i => i.status === 'unread').length > 0 && (
+                                        <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.75rem', fontWeight: 800, borderRadius: '12px', padding: '3px 10px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                            🔔 {myInquiries.filter(i => i.status === 'unread').length} New
+                                        </span>
+                                    )}
+                                </h2>
+                                <p style={{ fontSize: '0.85rem', color: 'var(--text-secondary)', margin: '4px 0 0 0' }}>Customer inquiries and showcase requests from the public site</p>
+                            </div>
+                            <button 
+                                onClick={async () => {
+                                    const newDb = { ...database };
+                                    newDb.inquiries = (newDb.inquiries || []).map(i => ({ ...i, status: 'read' }));
+                                    setDatabase(newDb);
+                                    try { await saveFullDatabase(newDb); } catch(e) {}
+                                    showToast("All inquiries marked as read", "success");
+                                }}
+                                style={{ padding: '8px 16px', background: '#f1f5f9', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer', color: '#334155' }}
+                            >
+                                ✓ Mark All as Read
+                            </button>
                         </div>
 
-                        {/* Search Inquiries Bar */}
-                        <div style={{ marginBottom: '20px', background: 'var(--bg-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
+                        {/* Search & Filter */}
+                        <div style={{ marginBottom: '20px', background: 'var(--bg-surface)', padding: '16px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)', display: 'flex', gap: '12px', flexWrap: 'wrap' }}>
                             <input 
                                 type="text" 
-                                placeholder="Search by customer name, mobile number, or property..."
+                                placeholder="Search by customer name, email, phone, or property..."
                                 value={inquirySearchQuery}
                                 onChange={(e) => setInquirySearchQuery(e.target.value)}
-                                style={{ width: '100%', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
+                                style={{ flex: 2, minWidth: '240px', padding: '10px 14px', border: '1px solid var(--border-color)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', background: 'var(--bg-main)', color: 'var(--text-primary)' }}
                             />
                         </div>
 
                         {(() => {
+                            const getRelativeTime = (dateStr) => {
+                                const now = new Date();
+                                const d = new Date(dateStr);
+                                const diffMs = now - d;
+                                const diffMin = Math.floor(diffMs / 60000);
+                                const diffHr = Math.floor(diffMs / 3600000);
+                                const diffDay = Math.floor(diffMs / 86400000);
+                                if (diffMin < 1) return 'Just now';
+                                if (diffMin < 60) return `${diffMin} min ago`;
+                                if (diffHr < 24) return `${diffHr} hr${diffHr > 1 ? 's' : ''} ago`;
+                                if (diffDay < 7) return `${diffDay} day${diffDay > 1 ? 's' : ''} ago`;
+                                return d.toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' });
+                            };
+
                             const filteredInquiries = (database.inquiries || []).filter(inq => {
                                 const q = inquirySearchQuery.toLowerCase().trim();
                                 if (!q) return true;
-                                const prop = myProperties.find(p => p.id === inq.listingId);
                                 return (inq.userName && inq.userName.toLowerCase().includes(q)) ||
                                        (inq.userPhone && inq.userPhone.toLowerCase().includes(q)) ||
-                                       (inq.userAddress && inq.userAddress.toLowerCase().includes(q)) ||
-                                       (prop && prop.title && prop.title.toLowerCase().includes(q));
+                                       (inq.userEmail && inq.userEmail.toLowerCase().includes(q)) ||
+                                       (inq.listingTitle && inq.listingTitle.toLowerCase().includes(q)) ||
+                                       (inq.message && inq.message.toLowerCase().includes(q));
                             });
 
                             if (filteredInquiries.length === 0) {
@@ -802,39 +1014,100 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                             }
 
                             return (
-                                <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
                                     {filteredInquiries.map(inq => {
-                                        const property = myProperties.find(p => p.id === inq.listingId);
+                                        const isUnread = inq.status === 'unread';
                                         return (
-                                            <div key={inq.id} style={{ background: 'var(--bg-surface)', padding: '20px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border-color)' }}>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
-                                                    <div>
-                                                        <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--text-primary)', margin: '0 0 4px 0' }}>{inq.userName}</h3>
-                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px', color: 'var(--primary)', fontWeight: 600, fontSize: '0.95rem' }}>
-                                                            <Phone size={14} /> <a href={`tel:${inq.userPhone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{inq.userPhone}</a>
+                                            <div key={inq.id} style={{ 
+                                                background: 'var(--bg-surface)', 
+                                                padding: '20px', 
+                                                borderRadius: 'var(--radius-md)', 
+                                                border: isUnread ? '2px solid #921214' : '1px solid var(--border-color)',
+                                                boxShadow: isUnread ? '0 0 0 3px rgba(146,18,20,0.08)' : 'none',
+                                                transition: 'all 0.2s ease'
+                                            }}>
+                                                {/* Top Row: Customer + Time */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: isUnread ? '#921214' : '#94a3b8', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1rem', flexShrink: 0 }}>
+                                                            {(inq.userName || '?').charAt(0).toUpperCase()}
+                                                        </div>
+                                                        <div>
+                                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                                                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>{inq.userName || 'Unknown'}</h3>
+                                                                {isUnread && (
+                                                                    <span style={{ background: '#fef2f2', color: '#ef4444', fontSize: '0.68rem', fontWeight: 800, borderRadius: '4px', padding: '2px 6px', border: '1px solid #fecaca' }}>NEW</span>
+                                                                )}
+                                                            </div>
+                                                            <div style={{ display: 'flex', gap: '12px', fontSize: '0.82rem', color: 'var(--text-secondary)', marginTop: '2px', flexWrap: 'wrap' }}>
+                                                                <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                    <Phone size={12} color="#921214" /> <a href={`tel:${inq.userPhone}`} style={{ color: 'inherit', textDecoration: 'none' }}>{inq.userPhone}</a>
+                                                                </span>
+                                                                {inq.userEmail && (
+                                                                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                                        <Mail size={12} color="#00a2bb" /> {inq.userEmail}
+                                                                    </span>
+                                                                )}
+                                                                {inq.contactMethod && (
+                                                                    <span style={{ background: '#f1f5f9', padding: '1px 6px', borderRadius: '3px', fontSize: '0.72rem', fontWeight: 600, textTransform: 'capitalize' }}>
+                                                                        Prefers: {inq.contactMethod}
+                                                                    </span>
+                                                                )}
+                                                            </div>
                                                         </div>
                                                     </div>
-                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
-                                                        <Calendar size={12} /> {new Date(inq.createdAt).toLocaleDateString()}
+                                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.78rem', color: 'var(--text-muted)', flexShrink: 0 }}>
+                                                        <Calendar size={12} /> {getRelativeTime(inq.createdAt)}
                                                     </div>
                                                 </div>
-                                                
-                                                {inq.userAddress && (
-                                                    <div style={{ padding: '12px', background: 'var(--bg-main)', borderRadius: '6px', fontSize: '0.9rem', color: 'var(--text-secondary)', marginBottom: '12px', fontStyle: 'italic' }}>
-                                                        "{inq.userAddress}"
+
+                                                {/* Message */}
+                                                {inq.message && (
+                                                    <div style={{ padding: '12px 14px', background: 'var(--bg-main)', borderRadius: '8px', fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.5', borderLeft: '3px solid #921214' }}>
+                                                        {inq.message}
                                                     </div>
                                                 )}
-                                                
-                                                {property ? (
-                                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px', display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
-                                                        <span><strong>Inquiry for:</strong> {property.title} - {property.location}</span>
-                                                        <span><strong>Owner:</strong> {property.contactName} ({property.contactPhone})</span>
-                                                    </div>
-                                                ) : (
-                                                    <div style={{ fontSize: '0.85rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
-                                                        <strong>Inquiry for:</strong> Property ID: {inq.listingId}
+                                                {/* Legacy userAddress field */}
+                                                {!inq.message && inq.userAddress && (
+                                                    <div style={{ padding: '12px 14px', background: 'var(--bg-main)', borderRadius: '8px', fontSize: '0.88rem', color: 'var(--text-secondary)', marginBottom: '12px', lineHeight: '1.5', borderLeft: '3px solid #921214' }}>
+                                                        {inq.userAddress}
                                                     </div>
                                                 )}
+
+                                                {/* Plan To + Property Info */}
+                                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '0.82rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border-color)', paddingTop: '12px' }}>
+                                                    <div style={{ display: 'flex', gap: '12px', flexWrap: 'wrap', alignItems: 'center' }}>
+                                                        <span><strong>Property:</strong> {inq.listingTitle || `ID: ${inq.listingId}`}</span>
+                                                        {inq.listingAddress && <span style={{ color: '#64748b' }}>• {inq.listingAddress}</span>}
+                                                        {inq.planTo && (
+                                                            <span style={{ background: 'rgba(146,18,20,0.08)', color: '#921214', padding: '2px 8px', borderRadius: '4px', fontWeight: 600, fontSize: '0.75rem' }}>
+                                                                Plans to: {inq.planTo}
+                                                            </span>
+                                                        )}
+                                                    </div>
+                                                    <div style={{ display: 'flex', gap: '6px' }}>
+                                                        {isUnread && (
+                                                            <button 
+                                                                onClick={async () => {
+                                                                    const newDb = { ...database };
+                                                                    newDb.inquiries = (newDb.inquiries || []).map(i => i.id === inq.id ? { ...i, status: 'contacted' } : i);
+                                                                    setDatabase(newDb);
+                                                                    try { await saveFullDatabase(newDb); } catch(e) {}
+                                                                    showToast(`Marked ${inq.userName} as contacted`, "success");
+                                                                }}
+                                                                style={{ padding: '6px 12px', background: '#10b981', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
+                                                            >
+                                                                ✓ Mark Contacted
+                                                            </button>
+                                                        )}
+                                                        <a 
+                                                            href={`tel:${inq.userPhone}`}
+                                                            style={{ padding: '6px 12px', background: '#921214', color: '#fff', border: 'none', borderRadius: '4px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: '4px' }}
+                                                        >
+                                                            <Phone size={12} /> Call
+                                                        </a>
+                                                    </div>
+                                                </div>
                                             </div>
                                         );
                                     })}

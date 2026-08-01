@@ -73,7 +73,7 @@ export default function UserPortal({
     const [selectedDetailListing, setSelectedDetailListing] = useState(null);
     const [advancedFilters, setAdvancedFilters] = useState({
         tab: 'residential',
-        transactionType: 'for_sale',
+        transactionType: 'all',
         propertyType: 'any',
         minPrice: '',
         maxPrice: '',
@@ -90,6 +90,10 @@ export default function UserPortal({
         liveStreamsOnly: false,
         query: ''
     });
+
+    useEffect(() => {
+        setFocusedLocation(null);
+    }, [advancedFilters, userSearchText]);
 
     const toggleDistrict = (districtName) => {
         setExpandedDistricts(prev => ({
@@ -188,17 +192,39 @@ export default function UserPortal({
         let layoutResults = [];
         if (database.layouts) {
             const locPromises = database.layouts.map(async (layout, idx) => {
-                if (layout.lat && layout.lng) return layout;
-                const parts = [layout.name, layout.area, layout.district, layout.state].filter(Boolean);
-                const address = parts.join(", ");
-                const geocoded = await geocodeAddress(address, layout);
-                if (geocoded && geocoded.lat && geocoded.lng) return geocoded;
+                let lat = layout.lat;
+                let lng = layout.lng;
+                if (!lat || !lng) {
+                    const parts = [layout.name, layout.area, layout.district, layout.state].filter(Boolean);
+                    const address = parts.join(", ");
+                    const geocoded = await geocodeAddress(address, layout);
+                    if (geocoded && geocoded.lat && geocoded.lng) {
+                        lat = geocoded.lat;
+                        lng = geocoded.lng;
+                    } else {
+                        const fb = getFallbackCoords(address || layout.district || layout.area, idx);
+                        lat = fb.lat;
+                        lng = fb.lng;
+                    }
+                }
 
-                const fb = getFallbackCoords(address || layout.district || layout.area, idx);
+                const parts = [layout.area, layout.district, layout.state].filter(Boolean);
+                const displayAddress = parts.length > 0 ? parts.join(", ") : 'Vijayamangalam, Erode, Tamil Nadu';
+                const defaultImage = layout.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
+
                 return {
                     ...layout,
-                    lat: fb.lat,
-                    lng: fb.lng
+                    lat,
+                    lng,
+                    name: layout.name || 'Layout Sheet',
+                    displayAddress,
+                    price: layout.price || 4500000,
+                    beds: layout.beds || 3,
+                    baths: layout.baths || 2,
+                    sqft: layout.sqft || '1,200',
+                    category: layout.category || 'residential',
+                    media: (layout.media && layout.media.length > 0) ? layout.media : [{ type: 'image', url: defaultImage }],
+                    createdAt: layout.createdAt || layout.created_at || new Date().toISOString()
                 };
             });
             layoutResults = await Promise.all(locPromises);
@@ -226,6 +252,9 @@ export default function UserPortal({
                 displayAddress = [listing.location, listing.pincode].filter(Boolean).join(", ");
             }
 
+            const defaultImg = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
+            const mediaList = (listing.media && listing.media.length > 0) ? listing.media : [{ type: 'image', url: listing.image || defaultImg }];
+
             return {
                 ...listing,
                 lat,
@@ -235,7 +264,9 @@ export default function UserPortal({
                 area: displayAddress,
                 displayAddress,
                 district: listing.location ? listing.location.trim() : 'Erode',
-                state: 'Tamil Nadu'
+                state: 'Tamil Nadu',
+                media: mediaList,
+                createdAt: listing.createdAt || listing.created_at || new Date().toISOString()
             };
         });
 
@@ -289,7 +320,93 @@ export default function UserPortal({
     const filteredLocations = useMemo(() => {
         let results = allLocations;
 
-        // 1. Filter by text query if typed
+        // 1. Filter by Residential / Commercial tab
+        const RESIDENTIAL_CATS = ['residential', 'rental_house', 'pg', 'room', 'bogithu', 'apartment', 'villa', 'land', 'plot', 'farm_house', 'independent_floor', 'house'];
+        const COMMERCIAL_CATS = ['commercial', 'office', 'shop', 'warehouse', 'industrial', 'commercial_land', 'commercial_building', 'showroom'];
+
+        if (advancedFilters.tab === 'commercial') {
+            results = results.filter(loc => {
+                const cat = (loc.category || 'residential').toLowerCase();
+                return COMMERCIAL_CATS.some(c => cat.includes(c));
+            });
+        } else {
+            // residential (default) — show everything that's NOT purely commercial
+            results = results.filter(loc => {
+                const cat = (loc.category || 'residential').toLowerCase();
+                const isCommercial = COMMERCIAL_CATS.some(c => cat.includes(c));
+                // Show it if it's residential OR if it doesn't match any commercial category
+                return !isCommercial || RESIDENTIAL_CATS.some(c => cat.includes(c));
+            });
+        }
+
+        // 2. Filter by transaction type (all, for_sale, for_rent, sold)
+        if (advancedFilters.transactionType === 'for_rent') {
+            results = results.filter(loc => {
+                const cat = (loc.category || '').toLowerCase();
+                const txn = (loc.transactionType || '').toLowerCase();
+                return txn === 'for_rent' || txn === 'lease' || Boolean(loc.rentAmount) || Boolean(loc.bogithuAmount) || ['rental_house', 'pg', 'room', 'bogithu'].includes(cat);
+            });
+        } else if (advancedFilters.transactionType === 'sold') {
+            results = results.filter(loc => {
+                return (loc.status || '').toLowerCase() === 'sold';
+            });
+        } else if (advancedFilters.transactionType === 'for_sale') {
+            results = results.filter(loc => {
+                const cat = (loc.category || '').toLowerCase();
+                const txn = (loc.transactionType || '').toLowerCase();
+                if (txn === 'for_sale') return true;
+                if (txn === 'for_rent' || txn === 'lease') return false;
+                if (['rental_house', 'pg', 'room', 'bogithu'].includes(cat) && !loc.price) return false;
+                return true;
+            });
+        }
+        // If advancedFilters.transactionType === 'all', show all listings regardless of transaction type
+
+        // 3. Filter by min/max price
+        if (advancedFilters.minPrice) {
+            const min = Number(advancedFilters.minPrice);
+            results = results.filter(loc => {
+                const amt = Number(loc.price || loc.rentAmount || loc.bogithuAmount || 0);
+                return amt >= min;
+            });
+        }
+        if (advancedFilters.maxPrice) {
+            const max = Number(advancedFilters.maxPrice);
+            results = results.filter(loc => {
+                const amt = Number(loc.price || loc.rentAmount || loc.bogithuAmount || 0);
+                return amt <= max;
+            });
+        }
+
+        // 4. Filter by beds (Residential only)
+        if (advancedFilters.tab !== 'commercial' && advancedFilters.beds && advancedFilters.beds !== 'any') {
+            const minBeds = Number(advancedFilters.beds);
+            results = results.filter(loc => Number(loc.beds || 0) >= minBeds);
+        }
+
+        // 5. Filter by baths (Residential only)
+        if (advancedFilters.tab !== 'commercial' && advancedFilters.baths && advancedFilters.baths !== 'any') {
+            const minBaths = Number(advancedFilters.baths);
+            results = results.filter(loc => Number(loc.baths || 0) >= minBaths);
+        }
+
+        // 5a. Filter by commercial building size (minSqft)
+        if (advancedFilters.tab === 'commercial' && advancedFilters.minSqft) {
+            const minSq = Number(advancedFilters.minSqft);
+            results = results.filter(loc => Number(String(loc.sqft).replace(/,/g, '') || 0) >= minSq);
+        }
+
+        // 5b. Filter by commercial land area (minLand / maxLand)
+        if (advancedFilters.tab === 'commercial' && advancedFilters.minLand) {
+            const minL = Number(advancedFilters.minLand);
+            results = results.filter(loc => Number(loc.landArea || String(loc.sqft).replace(/,/g, '') || 0) >= minL);
+        }
+        if (advancedFilters.tab === 'commercial' && advancedFilters.maxLand) {
+            const maxL = Number(advancedFilters.maxLand);
+            results = results.filter(loc => Number(loc.landArea || String(loc.sqft).replace(/,/g, '') || 0) <= maxL);
+        }
+
+        // 6. Filter by text query if typed
         if (userSearchText && userSearchText.trim()) {
             const query = userSearchText.toLowerCase().trim();
             results = results.filter(loc => {
@@ -311,7 +428,7 @@ export default function UserPortal({
             });
         }
 
-        // 2. Filter by coordinates radius if geocoded
+        // 7. Filter by coordinates radius if geocoded
         if (userSearchCoords) {
             results = results.map(loc => ({
                 ...loc,
@@ -320,7 +437,7 @@ export default function UserPortal({
         }
 
         return results;
-    }, [allLocations, userSearchText, userSearchCoords]);
+    }, [allLocations, userSearchText, userSearchCoords, advancedFilters]);
 
     const [drawnFilteredLocations, setDrawnFilteredLocations] = useState(null);
     const [clearBoundaryTrigger, setClearBoundaryTrigger] = useState(0);
@@ -1014,7 +1131,7 @@ export default function UserPortal({
                                                     <div className="realtor-listing-price">
                                                         {loc.isOwnerListing 
                                                             ? (loc.category === 'bogithu' ? `₹${Number(loc.bogithuAmount || 1500000).toLocaleString('en-IN')}` : `₹${Number(loc.rentAmount || 25000).toLocaleString('en-IN')}`)
-                                                            : (loc.price ? `$${Number(loc.price).toLocaleString()}` : '₹45,00,000')}
+                                                            : (loc.price ? `₹${Number(loc.price).toLocaleString('en-IN')}` : '₹45,00,000')}
                                                     </div>
                                                     <div className="realtor-listing-address">
                                                         {loc.name || loc.title || 'Verified Property'}
@@ -1182,8 +1299,9 @@ export default function UserPortal({
                                 )}
 
                                 <select className="realtor-select" value={advancedFilters.transactionType} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, transactionType: e.target.value }))}>
-                                    <option value="for_sale">For sale</option>
-                                    <option value="for_rent">For rent</option>
+                                    <option value="all">All Properties</option>
+                                    <option value="for_sale">For Sale</option>
+                                    <option value="for_rent">For Rent / Lease</option>
                                     <option value="sold">Sold</option>
                                 </select>
 
@@ -1204,21 +1322,52 @@ export default function UserPortal({
                                     <option value="50000000">₹5 Crores+</option>
                                 </select>
 
-                                <select className="realtor-select" value={advancedFilters.beds} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, beds: e.target.value }))}>
-                                    <option value="any">Beds</option>
-                                    <option value="1">1+</option>
-                                    <option value="2">2+</option>
-                                    <option value="3">3+</option>
-                                    <option value="4">4+</option>
-                                    <option value="5">5+</option>
-                                </select>
+                                {advancedFilters.tab === 'commercial' ? (
+                                    <>
+                                        <select className="realtor-select" value={advancedFilters.minSqft} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minSqft: e.target.value }))}>
+                                            <option value="">Building Size</option>
+                                            <option value="500">500+ sqft</option>
+                                            <option value="1000">1,000+ sqft</option>
+                                            <option value="2500">2,500+ sqft</option>
+                                            <option value="5000">5,000+ sqft</option>
+                                            <option value="10000">10,000+ sqft</option>
+                                        </select>
 
-                                <select className="realtor-select" value={advancedFilters.baths} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, baths: e.target.value }))}>
-                                    <option value="any">Baths</option>
-                                    <option value="1">1+</option>
-                                    <option value="2">2+</option>
-                                    <option value="3">3+</option>
-                                </select>
+                                        <select className="realtor-select" value={advancedFilters.minLand} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minLand: e.target.value }))}>
+                                            <option value="">Min Land Area</option>
+                                            <option value="1000">1,000+ sqft</option>
+                                            <option value="5000">5,000+ sqft</option>
+                                            <option value="10000">10,000+ sqft</option>
+                                            <option value="43560">1 Acre+</option>
+                                        </select>
+
+                                        <select className="realtor-select" value={advancedFilters.maxLand} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, maxLand: e.target.value }))}>
+                                            <option value="">Max Land Area</option>
+                                            <option value="5000">5,000 sqft</option>
+                                            <option value="10000">10,000 sqft</option>
+                                            <option value="43560">1 Acre</option>
+                                            <option value="217800">5 Acres</option>
+                                        </select>
+                                    </>
+                                ) : (
+                                    <>
+                                        <select className="realtor-select" value={advancedFilters.beds} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, beds: e.target.value }))}>
+                                            <option value="any">Beds</option>
+                                            <option value="1">1+</option>
+                                            <option value="2">2+</option>
+                                            <option value="3">3+</option>
+                                            <option value="4">4+</option>
+                                            <option value="5">5+</option>
+                                        </select>
+
+                                        <select className="realtor-select" value={advancedFilters.baths} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, baths: e.target.value }))}>
+                                            <option value="any">Baths</option>
+                                            <option value="1">1+</option>
+                                            <option value="2">2+</option>
+                                            <option value="3">3+</option>
+                                        </select>
+                                    </>
+                                )}
 
                                 <button className="btn-realtor-search" onClick={() => showToast(`Searching for ${userSearchText || 'all listings'}...`, "info")}>
                                     <Search size={18} />
@@ -1291,7 +1440,15 @@ export default function UserPortal({
                                 }}>
                                     <div style={{ padding: '12px 16px', display: 'flex', flexDirection: 'column', gap: '0' }}>
                                         {sortedDisplayLocations.length > 0 ? sortedDisplayLocations.map(loc => (
-                                            <div key={loc.id} className="realtor-listing-card" onClick={() => setSelectedDetailListing(loc)} onMouseEnter={() => setFocusedLocation(loc)} style={{ marginBottom: '12px', borderRadius: '8px' }}>
+                                            <div 
+                                                key={loc.id} 
+                                                className="realtor-listing-card" 
+                                                onClick={() => {
+                                                    setFocusedLocation(loc);
+                                                    setSelectedDetailListing(loc);
+                                                }} 
+                                                style={{ marginBottom: '12px', borderRadius: '8px', cursor: 'pointer' }}
+                                            >
                                                 <div style={{ position: 'relative' }}>
                                                     <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} />
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
@@ -1340,6 +1497,7 @@ export default function UserPortal({
                                             isFavorite={isFavorite}
                                             onToggleFavorite={toggleFavorite}
                                             onContactOwner={(loc) => { setSelectedContactListing(loc); setContactModalOpen(true); }}
+                                            onSelectDetail={(loc) => setSelectedDetailListing(loc)}
                                         />
                                     </div>
                                 </div>
@@ -1358,7 +1516,7 @@ export default function UserPortal({
                                                     </button>
                                                 </div>
                                                 <div className="realtor-listing-card-body">
-                                                    <div className="realtor-listing-price">{loc.isOwnerListing ? (loc.category === 'bogithu' ? `₹${Number(loc.bogithuAmount).toLocaleString()}` : `₹${Number(loc.rentAmount).toLocaleString()}`) : (loc.price ? `$${Number(loc.price).toLocaleString()}` : '$849,800')}</div>
+                                                    <div className="realtor-listing-price">{loc.isOwnerListing ? (loc.category === 'bogithu' ? `₹${Number(loc.bogithuAmount).toLocaleString('en-IN')}` : `₹${Number(loc.rentAmount).toLocaleString('en-IN')}`) : (loc.price ? `₹${Number(loc.price).toLocaleString('en-IN')}` : '₹45,00,000')}</div>
                                                     <div className="realtor-listing-address">{loc.name || loc.title || 'Property Listing'}</div>
                                                     <div className="realtor-listing-location">{loc.displayAddress || `${loc.district || 'Area'}, ${loc.state || 'State'}`}</div>
                                                     <div className="realtor-listing-specs">
@@ -1383,41 +1541,73 @@ export default function UserPortal({
 
             </div>
 
-            {/* Contact Owner / Request Showing Modal */}
+            {/* Contact Owner / Request Showing Modal — Professional Realtor Style */}
             {contactModalOpen && selectedContactListing && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    <div style={{ background: '#ffffff', padding: '24px', borderRadius: '12px', width: '90%', maxWidth: '440px', boxShadow: '0 10px 30px rgba(0,0,0,0.25)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                            <h3 style={{ margin: 0, fontSize: '1.2rem', color: '#0f172a', fontWeight: 800 }}>Contact Property Representative</h3>
-                            <button onClick={() => setContactModalOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: '#64748b' }}><X size={20} /></button>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.55)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
+                    <div style={{ background: '#ffffff', borderRadius: '12px', width: '100%', maxWidth: '520px', boxShadow: '0 20px 50px rgba(0,0,0,0.3)', maxHeight: '90vh', overflowY: 'auto' }}>
+                        {/* Header with close */}
+                        <div style={{ padding: '20px 24px 16px', borderBottom: '1px solid #e2e8f0', display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                            <div>
+                                <h3 style={{ margin: '0 0 4px 0', fontSize: '1.15rem', color: '#0f172a', fontWeight: 800 }}>Request Property Information</h3>
+                                <p style={{ margin: 0, fontSize: '0.8rem', color: '#64748b' }}><span style={{ color: '#ef4444' }}>*</span> Required fields</p>
+                            </div>
+                            <button onClick={() => setContactModalOpen(false)} style={{ background: '#f1f5f9', border: 'none', cursor: 'pointer', color: '#64748b', borderRadius: '50%', width: '32px', height: '32px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><X size={18} /></button>
                         </div>
 
-                        <div style={{ background: '#f8fafc', padding: '14px', borderRadius: '8px', marginBottom: '16px', border: '1px solid #e2e8f0' }}>
-                            <p style={{ margin: '0 0 4px 0', fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>{selectedContactListing.name || selectedContactListing.title || 'Verified Property'}</p>
-                            <p style={{ margin: '0 0 8px 0', color: '#64748b', fontSize: '0.82rem' }}>{selectedContactListing.displayAddress || `${selectedContactListing.district || 'Erode'}, Tamil Nadu`}</p>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', color: '#921214', fontWeight: 700, fontSize: '1rem' }}>
-                                <Phone size={16} /> {selectedContactListing.contactPhone || selectedContactListing.ownerPhone || '+91 98765 43210'}
+                        {/* Representative/Owner Contact Card */}
+                        <div style={{ padding: '16px 24px', background: '#f8fafc', borderBottom: '1px solid #e2e8f0' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', marginBottom: '8px' }}>
+                                <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: '#921214', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 800, fontSize: '1rem', flexShrink: 0 }}>
+                                    {(selectedContactListing.contactName || 'A').charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                    <p style={{ margin: 0, fontWeight: 700, color: '#0f172a', fontSize: '0.95rem' }}>To: {selectedContactListing.contactName || 'Property Representative'}</p>
+                                    <p style={{ margin: 0, fontSize: '0.78rem', color: '#64748b' }}>Property Docks Verified Agent</p>
+                                </div>
+                            </div>
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginLeft: '52px' }}>
+                                <span style={{ fontSize: '0.82rem', color: '#334155', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Phone size={13} color="#921214" /> {selectedContactListing.contactPhone || selectedContactListing.ownerPhone || '+91 98765 43210'}
+                                </span>
                             </div>
                         </div>
 
+                        {/* Property Info Banner */}
+                        <div style={{ padding: '12px 24px', background: '#fffbeb', borderBottom: '1px solid #fde68a' }}>
+                            <p style={{ margin: 0, fontWeight: 700, color: '#92400e', fontSize: '0.88rem' }}>{selectedContactListing.name || selectedContactListing.title || 'Verified Property'}</p>
+                            <p style={{ margin: '2px 0 0 0', color: '#a16207', fontSize: '0.78rem' }}>{selectedContactListing.displayAddress || `${selectedContactListing.district || 'Erode'}, Tamil Nadu`}</p>
+                        </div>
+
+                        {/* Inquiry Form */}
                         <form onSubmit={async (e) => {
                             e.preventDefault();
                             const form = e.target;
-                            const name = form.customerName.value.trim();
-                            const phone = form.customerPhone.value.trim();
-                            const address = form.customerNote ? form.customerNote.value.trim() : '';
+                            const firstName = form.firstName.value.trim();
+                            const lastName = form.lastName.value.trim();
+                            const email = form.email.value.trim();
+                            const phone = form.phone.value.trim();
+                            const contactMethod = form.contactMethod.value;
+                            const message = form.message.value.trim();
+                            const planTo = form.planTo.value;
 
-                            if (!name || !phone) {
-                                showToast("Please fill in your name and phone number", "warning");
+                            if (!firstName || !email || !phone) {
+                                showToast("Please fill in all required fields", "warning");
                                 return;
                             }
 
                             const newInquiry = {
                                 id: 'inq_' + Date.now(),
                                 listingId: selectedContactListing.id,
-                                userName: name,
+                                listingTitle: selectedContactListing.name || selectedContactListing.title || 'Property',
+                                listingAddress: selectedContactListing.displayAddress || '',
+                                listingPrice: selectedContactListing.price || selectedContactListing.rentAmount || '',
+                                userName: `${firstName} ${lastName}`.trim(),
+                                userEmail: email,
                                 userPhone: phone,
-                                userAddress: address || `Inquiry for ${selectedContactListing.name || selectedContactListing.title}`,
+                                contactMethod: contactMethod,
+                                message: message,
+                                planTo: planTo,
+                                status: 'unread',
                                 createdAt: new Date().toISOString()
                             };
 
@@ -1427,33 +1617,96 @@ export default function UserPortal({
                             try {
                                 setDatabase(newDb);
                                 await saveFullDatabase(newDb);
-                                showToast("Inquiry submitted! Property Representative will call you back shortly.", "success");
-                                window.location.href = `tel:${selectedContactListing.contactPhone || '+919876543210'}`;
+                                showToast("✅ Inquiry submitted successfully! The property representative will contact you shortly.", "success");
                                 setContactModalOpen(false);
                             } catch (err) {
                                 console.error("Error saving inquiry", err);
                                 showToast("Inquiry saved locally!", "success");
                                 setContactModalOpen(false);
                             }
-                        }} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Your Name <span style={{ color: '#ef4444' }}>*</span></label>
-                                <input type="text" name="customerName" placeholder="Enter your full name" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }} />
+                        }} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
+                            {/* Name Row */}
+                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <input type="text" name="firstName" placeholder="First name" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Last Name</label>
+                                    <input type="text" name="lastName" placeholder="Last name" style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                                </div>
                             </div>
 
+                            {/* Email */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Your Phone Number <span style={{ color: '#ef4444' }}>*</span></label>
-                                <input type="tel" name="customerPhone" placeholder="Enter your 10-digit mobile number" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }} />
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Email <span style={{ color: '#ef4444' }}>*</span></label>
+                                <input type="email" name="email" placeholder="example@email.com" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
 
+                            {/* Preferred Contact Method */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Message / Requirements (Optional)</label>
-                                <textarea name="customerNote" placeholder="Interested in site visit or property legal docs..." rows="2" style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.88rem', outline: 'none', resize: 'none' }} />
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>Preferred method of contact <span style={{ color: '#ef4444' }}>*</span></label>
+                                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem', color: '#334155' }}>
+                                        <input type="radio" name="contactMethod" value="email" defaultChecked style={{ accentColor: '#921214' }} /> Email
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem', color: '#334155' }}>
+                                        <input type="radio" name="contactMethod" value="phone" style={{ accentColor: '#921214' }} /> Phone
+                                    </label>
+                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem', color: '#334155' }}>
+                                        <input type="radio" name="contactMethod" value="whatsapp" style={{ accentColor: '#921214' }} /> WhatsApp
+                                    </label>
+                                </div>
                             </div>
 
-                            <button type="submit" style={{ width: '100%', padding: '12px', background: '#921214', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '4px' }}>
-                                <Phone size={18} /> Call & Submit Inquiry
-                            </button>
+                            {/* Phone */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Phone number <span style={{ color: '#ef4444' }}>*</span></label>
+                                <input type="tel" name="phone" placeholder="+91 98765 43210" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                            </div>
+
+                            {/* Message with auto-populated text */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Message <span style={{ color: '#ef4444' }}>*</span></label>
+                                <textarea 
+                                    name="message" 
+                                    rows="4" 
+                                    maxLength={1000}
+                                    defaultValue={`I would appreciate more information about ${selectedContactListing.name || selectedContactListing.title || 'this property'}, ${selectedContactListing.displayAddress || selectedContactListing.district || 'Erode'}, Tamil Nadu.\n\nPlease share property documents and schedule a site visit.`}
+                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.88rem', outline: 'none', resize: 'vertical', lineHeight: '1.5', boxSizing: 'border-box' }}
+                                    onChange={(e) => {
+                                        const counter = e.target.parentElement.querySelector('.char-count');
+                                        if (counter) counter.textContent = `${e.target.value.length}/1000`;
+                                    }}
+                                />
+                                <div style={{ textAlign: 'right', fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }} className="char-count">0/1000</div>
+                            </div>
+
+                            {/* Plan To */}
+                            <div>
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>In the next 6 months do you plan to:</label>
+                                <select name="planTo" style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', color: '#334155', background: '#fff' }}>
+                                    <option value="">Select</option>
+                                    <option value="buy">Buy a property</option>
+                                    <option value="rent">Rent a property</option>
+                                    <option value="sell">Sell a property</option>
+                                    <option value="invest">Invest in real estate</option>
+                                    <option value="browsing">Just browsing</option>
+                                </select>
+                            </div>
+
+                            {/* Submit Buttons */}
+                            <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
+                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#921214', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 800, fontSize: '0.92rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(146,18,20,0.3)' }}>
+                                    <Mail size={16} /> Send Inquiry
+                                </button>
+                                <button type="button" onClick={() => {
+                                    const phone = selectedContactListing.contactPhone || selectedContactListing.ownerPhone || '+919876543210';
+                                    window.location.href = `tel:${phone}`;
+                                }} style={{ padding: '12px 20px', background: '#f1f5f9', color: '#334155', border: '1px solid #cbd5e1', borderRadius: '6px', fontWeight: 700, fontSize: '0.88rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                    <Phone size={16} /> Call
+                                </button>
+                            </div>
                         </form>
                     </div>
                 </div>
