@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { LayoutDashboard, Map, Landmark, Users, ClipboardList, BarChart3, Settings, LogOut, ChevronDown, ChevronLeft, ChevronRight, Plus, Upload, Edit2, Trash2, X, Video, MapPin, ShieldCheck } from 'lucide-react';
+import { LayoutDashboard, Map, Landmark, Users, ClipboardList, BarChart3, Settings, LogOut, ChevronDown, ChevronLeft, ChevronRight, Plus, Upload, Edit2, Trash2, X, Video, MapPin, ShieldCheck, MessageSquare } from 'lucide-react';
 import Header from './components/Header';
 import VectorizerEngine from './utils/VectorizerEngine';
 import SidebarLeft from './components/SidebarLeft';
@@ -9,7 +9,7 @@ import ToastContainer from './components/ToastContainer';
 import INITIAL_MAP_DATA from './utils/initialMapData';
 import { fetchDatabase, saveFullDatabase, uploadImage } from './utils/api';
 import UserPortal from './components/UserPortal';
-import OwnerPortal from './components/OwnerPortal';
+import InquiriesManager from './components/InquiriesManager';
 import BookingsManager from './components/BookingsManager';
 import VideosManager from './components/VideosManager';
 import DashboardManager from './components/DashboardManager';
@@ -199,12 +199,14 @@ export default function App() {
         const hash = window.location.hash;
         const search = window.location.search;
         if (path === '/owner' || path.startsWith('/owner/') || hash === '#/owner' || hash === '#owner' || search === '?owner' || search.includes('owner') || path === '/admin' || search === '?admin' || hash === '#admin') {
-            return "owner";
+            return "admin";
         }
         return "user";
     });
     const [adminTab, setAdminTab] = useState(() => {
-        return localStorage.getItem("property_docs_admin_tab") || "dashboard";
+        const saved = localStorage.getItem("property_docs_admin_tab");
+        if (saved === 'inquiries') return "dashboard";
+        return saved || "dashboard";
     });
     useEffect(() => {
         localStorage.setItem("property_docs_admin_tab", adminTab);
@@ -240,10 +242,10 @@ export default function App() {
             const path = window.location.pathname;
             const hash = window.location.hash;
             const search = window.location.search;
-            if (path === '/owner' || path.startsWith('/owner/') || hash === '#/owner' || hash === '#owner' || search === '?owner' || search.includes('owner')) {
-                setRole("owner");
-            } else if (path === '/admin' || hash === '#/admin' || hash === '#admin' || search === '?admin' || search.includes('admin')) {
+            if (path === '/owner' || path.startsWith('/owner/') || hash === '#/owner' || hash === '#owner' || search === '?owner' || search.includes('owner') || path === '/admin' || hash === '#/admin' || hash === '#admin' || search === '?admin' || search.includes('admin')) {
                 setRole("admin");
+            } else {
+                setRole("user");
             }
         };
 
@@ -264,8 +266,8 @@ export default function App() {
             if (e.ctrlKey && e.shiftKey && (e.key === 'A' || e.key === 'a')) {
                 e.preventDefault();
                 setRole(prev => {
-                    const nextRole = prev === 'user' ? 'owner' : prev === 'owner' ? 'admin' : 'user';
-                    const roleNames = { user: 'Public User Site', owner: 'Property Uploader & CRM', admin: 'Master Plot Vectorizer' };
+                    const nextRole = prev === 'user' ? 'admin' : 'user';
+                    const roleNames = { user: 'Public User Site', admin: 'Master Admin Panel' };
                     showToast(`Switched to ${roleNames[nextRole]}`, "success");
                     return nextRole;
                 });
@@ -1099,7 +1101,7 @@ export default function App() {
             )}
             
             {/* Hidden Admin Login Modal */}
-            {(role === 'owner' || role === 'admin') && !isAdminAuthenticated && (
+            {role === 'admin' && !isAdminAuthenticated && (
                 <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(15, 23, 42, 0.85)', backdropFilter: 'blur(8px)', zIndex: 9999, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     <div style={{ background: '#ffffff', padding: '36px', borderRadius: '16px', width: '90%', maxWidth: '420px', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.35)', border: '1px solid #e2e8f0', textAlign: 'center' }}>
                         <div style={{ width: '60px', height: '60px', borderRadius: '50%', background: 'rgba(146, 18, 20, 0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', margin: '0 auto 16px auto' }}>
@@ -1168,19 +1170,6 @@ export default function App() {
                 </div>
             )}
 
-            {role === 'owner' && isAdminAuthenticated && (
-                <div className="app-container">
-                    <OwnerPortal 
-                        database={database} 
-                        setDatabase={setDatabase} 
-                        showToast={showToast}
-                        theme={theme}
-                        setRole={setRole}
-                        setIsAdminAuthenticated={setIsAdminAuthenticated}
-                    />
-                </div>
-            )}
-
             {role === 'user' ? (
                 <UserPortal 
                     database={database}
@@ -1214,132 +1203,6 @@ export default function App() {
                             >
                                 <LayoutDashboard size={18} />
                                 {!navCollapsed && <span>Dashboard</span>}
-                            </button>
-                            
-                            <div className="nav-item-container" style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                                <button 
-                                    className={`nav-item ${adminTab === 'layouts' ? 'active' : ''}`} 
-                                    onClick={() => { setAdminTab('layouts'); setLayoutsMenuExpanded(!layoutsMenuExpanded); }}
-                                    title={navCollapsed ? "Layouts" : undefined}
-                                    style={navCollapsed ? { padding: '12px 0', justifyContent: 'center', gap: 0 } : { display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%' }}
-                                >
-                                    <span style={{ display: 'flex', alignItems: 'center', gap: navCollapsed ? 0 : '8px', justifyContent: navCollapsed ? 'center' : 'flex-start', width: '100%' }}>
-                                        <Map size={18} />
-                                        {!navCollapsed && <span>Layouts</span>}
-                                    </span>
-                                    {!navCollapsed && (layoutsMenuExpanded ? <ChevronDown size={14} /> : <ChevronRight size={14} />)}
-                                </button>
-                                {!navCollapsed && layoutsMenuExpanded && (
-                                    <div className="nav-sub-layout-switcher" style={{ padding: '0 12px 12px 12px', display: 'flex', flexDirection: 'column', gap: '8px', borderBottom: '1px solid rgba(255, 255, 255, 0.05)' }}>
-                                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                            <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }}>Sheets</span>
-                                            <button 
-                                                className="layouts-add-btn" 
-                                                title="Create New Layout Sheet" 
-                                                onClick={triggerCreateNewLayout}
-                                                style={{ width: '18px', height: '18px' }}
-                                            >
-                                                <Plus size={10} />
-                                            </button>
-                                        </div>
-                                        <select 
-                                            value={activeLayoutId} 
-                                            onChange={(e) => handleSetActiveLayoutId(e.target.value)}
-                                            className="theme-selector"
-                                            style={{ width: '100%', padding: '6px 8px', fontSize: '0.75rem', borderRadius: 'var(--radius-sm)', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-primary)' }}
-                                        >
-                                            {layouts.map(l => (
-                                                <option key={l.id} value={l.id}>{l.name}</option>
-                                            ))}
-                                        </select>
-                                        <div style={{ display: 'flex', gap: '4px', justifyContent: 'flex-start' }}>
-                                            <button 
-                                                className="btn-secondary" 
-                                                style={{ padding: '6px', borderRadius: 'var(--radius-sm)', flex: 1, display: 'flex', justifyContent: 'center' }} 
-                                                title="Upload Reference Layout Image/PDF"
-                                                onClick={triggerUploadWithMetadata}
-                                            >
-                                                <Upload size={12} />
-                                            </button>
-                                            <button 
-                                                className="btn-secondary" 
-                                                style={{ padding: '6px', borderRadius: 'var(--radius-sm)', flex: 1, display: 'flex', justifyContent: 'center' }} 
-                                                title="Edit Layout Information (Name, State, District, Area)"
-                                                onClick={triggerEditLayoutInfo}
-                                            >
-                                                <Edit2 size={12} />
-                                            </button>
-                                            <button 
-                                                className="btn-secondary" 
-                                                style={{ padding: '6px', borderRadius: 'var(--radius-sm)', flex: 1, display: 'flex', justifyContent: 'center', borderColor: 'rgba(239, 68, 68, 0.3)', color: '#ef4444' }} 
-                                                title="Delete Layout"
-                                                onClick={triggerDeleteLayout}
-                                            >
-                                                <Trash2 size={12} />
-                                            </button>
-                                        </div>
-
-                                        {/* OCR Progress bar within Navigation Sidebar */}
-                                        {ocrLoading && (
-                                            <div style={{ marginTop: '4px', padding: '10px', background: 'rgba(99, 102, 241, 0.1)', border: '1px solid rgba(99, 102, 241, 0.2)', borderRadius: 'var(--radius-sm)', position: 'relative' }}>
-                                                <button 
-                                                    onClick={cancelOcr}
-                                                    style={{ position: 'absolute', top: '8px', right: '8px', border: 'none', background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer', padding: 0, display: 'flex', alignItems: 'center' }}
-                                                    title="Cancel Scan"
-                                                >
-                                                    <X size={10} />
-                                                </button>
-                                                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem', marginBottom: '4px', color: 'var(--text-primary)', paddingRight: '14px' }}>
-                                                    <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap', maxWidth: '75%' }}>{ocrStatus}</span>
-                                                    <span>{ocrProgress}%</span>
-                                                </div>
-                                                <div style={{ width: '100%', height: '3px', background: 'rgba(255,255,255,0.05)', borderRadius: '1.5px', overflow: 'hidden' }}>
-                                                    <div style={{ width: `${ocrProgress}%`, height: '100%', background: 'linear-gradient(to right, var(--primary), var(--accent))', transition: 'width 0.2s ease-out' }}></div>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                             <button 
-                                className={`nav-item ${adminTab === 'globalmap' ? 'active' : ''}`} 
-                                onClick={() => setAdminTab('globalmap')}
-                                title={navCollapsed ? "Global Map" : undefined}
-                                style={navCollapsed ? { padding: '12px 0', justifyContent: 'center', gap: 0 } : {}}
-                            >
-                                <MapPin size={18} />
-                                {!navCollapsed && <span>Global Map</span>}
-                            </button>
-
-                             <button 
-                                className={`nav-item ${adminTab === 'plots' ? 'active' : ''}`} 
-                                onClick={() => setAdminTab('plots')}
-                                title={navCollapsed ? "Plots" : undefined}
-                                style={navCollapsed ? { padding: '12px 0', justifyContent: 'center', gap: 0 } : {}}
-                            >
-                                <Landmark size={18} />
-                                {!navCollapsed && <span>Plots</span>}
-                            </button>
-                            
-                            <button 
-                                className={`nav-item ${adminTab === 'bookings' ? 'active' : ''}`} 
-                                onClick={() => setAdminTab('bookings')}
-                                title={navCollapsed ? "Bookings" : undefined}
-                                style={navCollapsed ? { padding: '12px 0', justifyContent: 'center', gap: 0 } : {}}
-                            >
-                                <ClipboardList size={18} />
-                                {!navCollapsed && <span>Bookings</span>}
-                            </button>
-                            
-                            <button 
-                                className={`nav-item ${adminTab === 'videos' ? 'active' : ''}`} 
-                                onClick={() => setAdminTab('videos')}
-                                title={navCollapsed ? "Videos" : undefined}
-                                style={navCollapsed ? { padding: '12px 0', justifyContent: 'center', gap: 0 } : {}}
-                            >
-                                <Video size={18} />
-                                {!navCollapsed && <span>Videos</span>}
                             </button>
                             
                             <button 

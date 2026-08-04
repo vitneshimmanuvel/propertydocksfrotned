@@ -18,7 +18,10 @@ export default function Header({
     favoritesCount = 0, 
     onOpenAuth,
     onGoHome,
-    onOpenFavorites
+    onOpenFavorites,
+    propertyTab = 'residential',
+    onSelectTab,
+    hideSubnav = false
 }) {
     const [language, setLanguage] = useState('EN');
     const [activeSubnav, setActiveSubnav] = useState('find-home');
@@ -64,8 +67,9 @@ export default function Header({
                 </div>
             </div>
 
-            <div className="realtor-subnav">
-                <div className="realtor-subnav-links">
+            {!hideSubnav && (
+                <div className="realtor-subnav">
+                <div className="realtor-subnav-links" style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                     <div 
                         className={`realtor-subnav-item ${activeSubnav === 'find-home' ? 'active' : ''}`}
                         onClick={handleHomeClick}
@@ -74,27 +78,49 @@ export default function Header({
                     </div>
 
                     <div 
-                        className={`realtor-subnav-item ${activeSubnav === 'find-realtor' ? 'active' : ''}`}
-                        onClick={() => { setActiveSubnav('find-realtor'); if (onGoHome) onGoHome(); }}
+                        onClick={() => {
+                            setActiveSubnav('residential');
+                            if (onSelectTab) onSelectTab('residential');
+                        }}
+                        style={{
+                            cursor: 'pointer',
+                            padding: '4px 14px',
+                            borderRadius: '16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            background: propertyTab === 'residential' ? 'rgba(146, 18, 20, 0.08)' : 'transparent',
+                            color: propertyTab === 'residential' ? '#921214' : 'var(--text-secondary)',
+                            border: propertyTab === 'residential' ? '1px solid rgba(146, 18, 20, 0.3)' : '1px solid transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                        }}
                     >
-                        <span>Find an Expert</span>
-                        <ChevronDown size={14} />
+                        <span>🏠 Residential</span>
                     </div>
 
                     <div 
-                        className={`realtor-subnav-item ${activeSubnav === 'resources' ? 'active' : ''}`}
-                        onClick={() => setActiveSubnav('resources')}
+                        onClick={() => {
+                            setActiveSubnav('commercial');
+                            if (onSelectTab) onSelectTab('commercial');
+                        }}
+                        style={{
+                            cursor: 'pointer',
+                            padding: '4px 14px',
+                            borderRadius: '16px',
+                            fontSize: '0.85rem',
+                            fontWeight: 700,
+                            background: propertyTab === 'commercial' ? '#921214' : 'transparent',
+                            color: propertyTab === 'commercial' ? '#ffffff' : 'var(--text-secondary)',
+                            border: propertyTab === 'commercial' ? '1px solid #921214' : '1px solid transparent',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '6px',
+                            transition: 'all 0.2s ease'
+                        }}
                     >
-                        <span>Resources and Tools</span>
-                        <ChevronDown size={14} />
-                    </div>
-
-                    <div 
-                        className={`realtor-subnav-item ${activeSubnav === 'blog' ? 'active' : ''}`}
-                        onClick={() => setActiveSubnav('blog')}
-                    >
-                        <span>Property Docs Blog</span>
-                        <ChevronDown size={14} />
+                        <span>🏢 Commercial</span>
                     </div>
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
@@ -120,6 +146,7 @@ export default function Header({
                     </button>
                 </div>
             </div>
+            )}
         </header>
     );
 }

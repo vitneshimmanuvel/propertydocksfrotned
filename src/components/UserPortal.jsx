@@ -28,6 +28,7 @@ import {
     Video,
     X,
     Heart,
+    Globe,
     Users,
     FileText
 } from 'lucide-react';
@@ -230,7 +231,7 @@ export default function UserPortal({
             layoutResults = await Promise.all(locPromises);
         }
 
-        const ownerResults = (database.ownerListings || []).map((listing, idx) => {
+        const ownerResults = (database.ownerListings || []).filter(listing => listing.status !== 'disabled').map((listing, idx) => {
             let lat = listing.lat;
             let lng = listing.lng;
 
@@ -318,7 +319,7 @@ export default function UserPortal({
     };
 
     const filteredLocations = useMemo(() => {
-        let results = allLocations;
+        let results = allLocations.filter(loc => (loc.status || '').toLowerCase() !== 'disabled');
 
         // 1. Filter by Residential / Commercial tab
         const RESIDENTIAL_CATS = ['residential', 'rental_house', 'pg', 'room', 'bogithu', 'apartment', 'villa', 'land', 'plot', 'farm_house', 'independent_floor', 'house'];
@@ -952,6 +953,12 @@ export default function UserPortal({
                 setRole={setRole}
                 favoritesCount={localFavorites.length}
                 onOpenAuth={handleGoogleLogin}
+                propertyTab={advancedFilters.tab}
+                hideSubnav={activeTab === 'home'}
+                onSelectTab={(tab) => {
+                    setAdvancedFilters(prev => ({ ...prev, tab }));
+                    setActiveTab('search');
+                }}
                 onGoHome={() => {
                     setActiveTab('home');
                     clearSearch();
@@ -1271,21 +1278,6 @@ export default function UserPortal({
                         
                         {/* Search Bar */}
                         <div className="realtor-search-bar-wrapper">
-                            <div className="realtor-search-tabs">
-                                <button 
-                                    className={`realtor-search-tab ${advancedFilters.tab === 'residential' ? 'active' : ''}`}
-                                    onClick={() => setAdvancedFilters(prev => ({ ...prev, tab: 'residential' }))}
-                                >
-                                    🏠 Residential
-                                </button>
-                                <button 
-                                    className={`realtor-search-tab ${advancedFilters.tab === 'commercial' ? 'active' : ''}`}
-                                    onClick={() => setAdvancedFilters(prev => ({ ...prev, tab: 'commercial' }))}
-                                >
-                                    🏢 Commercial
-                                </button>
-                            </div>
-
                             <div className="realtor-search-bar-grid">
                                 {isLoaded ? (
                                     <StandaloneSearchBox onLoad={onSearchBoxLoad} onPlacesChanged={onPlacesChanged}>
@@ -1394,6 +1386,33 @@ export default function UserPortal({
                                 </select>
                             </div>
                             <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                <button 
+                                    onClick={() => {
+                                        clearSearch();
+                                        setUserSearchCoords(null);
+                                        setDrawnFilteredLocations(null);
+                                        setClearBoundaryTrigger(prev => prev + 1);
+                                        if (showToast) showToast("Showing all properties on map!", "info");
+                                    }} 
+                                    style={{ 
+                                        background: '#ffffff', 
+                                        color: '#921214', 
+                                        border: '1.5px solid #921214', 
+                                        borderRadius: '20px', 
+                                        padding: '7px 16px', 
+                                        fontSize: '0.82rem', 
+                                        fontWeight: 700, 
+                                        cursor: 'pointer', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        gap: '6px',
+                                        boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+                                    }}
+                                    title="Reset location search and show all properties on map"
+                                >
+                                    <Globe size={14} /> Show All Properties
+                                </button>
+
                                 <div className="realtor-view-toggle">
                                     <button className={`realtor-view-btn ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
                                         <Map size={14} style={{ marginRight: '4px' }} /> Map

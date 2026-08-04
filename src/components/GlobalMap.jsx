@@ -146,6 +146,7 @@ export default function GlobalMap({
     useEffect(() => {
         if (clearBoundaryTrigger > 0) {
             setPolygonPath([]);
+            setCurrentPath([]);
             setDrawingMode(false);
         }
     }, [clearBoundaryTrigger]);
@@ -315,19 +316,19 @@ export default function GlobalMap({
                         gestureHandling: drawingMode ? 'none' : 'auto'
                     }}
                 >
-                    {drawingMode && currentPath.length > 0 && (
+                    {drawingMode && currentPath.length >= 2 && (
                         <Polyline 
                             path={currentPath}
                             options={{
-                                strokeColor: '#ef4444',
-                                strokeOpacity: 1.0,
-                                strokeWeight: 2,
+                                strokeColor: '#921214',
+                                strokeOpacity: 0.9,
+                                strokeWeight: 3,
                                 clickable: false
                             }}
                         />
                     )}
 
-                    {!drawingMode && polygonPath.length > 0 && (
+                    {!drawingMode && polygonPath && polygonPath.length >= 3 && (
                         <Polygon 
                             paths={polygonPath}
                             options={{
@@ -378,12 +379,12 @@ export default function GlobalMap({
                     {selectedLocation && (
                         <InfoWindow
                             position={{ lat: selectedLocation.lat, lng: selectedLocation.lng }}
-                            options={{ maxWidth: 220, pixelOffset: window.google && window.google.maps ? new window.google.maps.Size(0, -10) : undefined }}
+                            options={{ maxWidth: 300, pixelOffset: window.google && window.google.maps ? new window.google.maps.Size(0, -10) : undefined }}
                             onCloseClick={() => {
                                 setSelectedLocation(null);
                             }}
                         >
-                            <div style={{ padding: 0, margin: '-1px', width: '210px', maxWidth: '210px', borderRadius: '10px', overflow: 'hidden', fontFamily: 'Outfit, sans-serif', boxShadow: '0 8px 20px rgba(0,0,0,0.2)' }}>
+                            <div style={{ padding: 0, margin: 0, width: '270px', borderRadius: '12px', overflow: 'hidden', fontFamily: 'Outfit, sans-serif', background: '#ffffff' }}>
                                 {(() => {
                                     const mediaList = getLocationMedia(selectedLocation);
                                     const currentMedia = mediaList[activeMediaIndex] || mediaList[0];
@@ -391,7 +392,7 @@ export default function GlobalMap({
                                     return (
                                         <>
                                             {/* Media Showcase Banner */}
-                                            <div style={{ width: '100%', height: '125px', position: 'relative', background: '#0f172a' }}>
+                                            <div style={{ width: '100%', height: '140px', position: 'relative', background: '#0f172a' }}>
                                                 {currentMedia && currentMedia.type === 'video' ? (
                                                     <video 
                                                         src={currentMedia.url} 
@@ -410,6 +411,23 @@ export default function GlobalMap({
                                                     />
                                                 )}
                                                 
+                                                {/* Expander Icon Button (Top Left) */}
+                                                <div 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        if (onSelectDetail) onSelectDetail(selectedLocation);
+                                                    }}
+                                                    title="Expand Full Property Details"
+                                                    style={{ position: 'absolute', top: '8px', left: '8px', background: 'rgba(255,255,255,0.95)', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', zIndex: 12 }}
+                                                >
+                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#921214" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                                        <polyline points="15 3 21 3 21 9"></polyline>
+                                                        <polyline points="9 21 3 21 3 15"></polyline>
+                                                        <line x1="21" y1="3" x2="14" y2="10"></line>
+                                                        <line x1="3" y1="21" x2="10" y2="14"></line>
+                                                    </svg>
+                                                </div>
+
                                                 {mediaList.length > 1 && (
                                                     <>
                                                         <div 
@@ -433,6 +451,7 @@ export default function GlobalMap({
                                                     </>
                                                 )}
 
+                                                {/* Favorite Heart Button (Positioned cleanly beside Google close X) */}
                                                 <div 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -442,9 +461,9 @@ export default function GlobalMap({
                                                         }
                                                         onToggleFavorite && onToggleFavorite(selectedLocation.id);
                                                     }}
-                                                    style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(255,255,255,0.95)', borderRadius: '50%', width: '26px', height: '26px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 4px rgba(0,0,0,0.15)' }}
+                                                    style={{ position: 'absolute', top: '8px', right: '42px', background: 'rgba(255,255,255,0.95)', borderRadius: '50%', width: '28px', height: '28px', display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', boxShadow: '0 2px 6px rgba(0,0,0,0.2)', zIndex: 12 }}
                                                 >
-                                                    <svg width="14" height="14" viewBox="0 0 24 24" fill={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "none"} stroke={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "#64748b"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
+                                                    <svg width="15" height="15" viewBox="0 0 24 24" fill={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "none"} stroke={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "#64748b"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                                                 </div>
 
                                                 <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(15, 23, 42, 0.75)', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '3px', backdropFilter: 'blur(4px)', fontWeight: 600 }}>
@@ -453,21 +472,21 @@ export default function GlobalMap({
                                             </div>
                                             
                                             {/* Details & Specs Body */}
-                                            <div style={{ padding: '10px 12px', background: '#ffffff' }}>
-                                                <div style={{ fontSize: '1.1rem', fontWeight: 800, color: '#921214', marginBottom: '2px' }}>
+                                            <div style={{ padding: '12px 14px', background: '#ffffff' }}>
+                                                <div style={{ fontSize: '1.15rem', fontWeight: 800, color: '#921214', marginBottom: '2px' }}>
                                                     {getFormattedPrice(selectedLocation)}
                                                 </div>
                                                 
-                                                <h3 style={{ margin: '0 0 2px 0', fontSize: '0.88rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <h3 style={{ margin: '0 0 2px 0', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {selectedLocation.name || selectedLocation.title || 'Property Listing'}
                                                 </h3>
                                                 
-                                                <p style={{ margin: '0 0 6px 0', fontSize: '0.75rem', color: '#64748b', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+                                                <p style={{ margin: '0 0 6px 0', fontSize: '0.76rem', color: '#64748b', lineHeight: '1.3', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                                     {selectedLocation.displayAddress || selectedLocation.area || `${selectedLocation.district || 'Erode'}, Tamil Nadu`}
                                                 </p>
 
                                                 {/* Specs badges */}
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.7rem', color: '#475569', margin: '6px 0', fontWeight: 600 }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#475569', margin: '6px 0', fontWeight: 600 }}>
                                                     <span>🛏️ {selectedLocation.beds || 3} Beds</span>
                                                     <span>🛁 {selectedLocation.baths || 2} Baths</span>
                                                     <span>📐 {selectedLocation.sqft || '1,200'} sqft</span>
@@ -483,16 +502,16 @@ export default function GlobalMap({
                                                     </span>
                                                 </div>
 
-                                                <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', marginTop: '8px' }}>
+                                                <div style={{ display: 'flex', gap: '8px', marginTop: '10px' }}>
                                                     {onContactOwner && (
                                                         <button 
                                                             style={{ 
-                                                                width: '100%', 
-                                                                padding: '7px', 
+                                                                flex: 1, 
+                                                                padding: '8px', 
                                                                 background: '#921214', 
                                                                 color: '#fff', 
                                                                 border: 'none', 
-                                                                borderRadius: '5px', 
+                                                                borderRadius: '6px', 
                                                                 fontWeight: '800',
                                                                 fontSize: '0.78rem',
                                                                 cursor: 'pointer',
@@ -500,21 +519,21 @@ export default function GlobalMap({
                                                             }}
                                                             onClick={() => onContactOwner(selectedLocation)}
                                                         >
-                                                            📞 Show Contact
+                                                            📞 Contact
                                                         </button>
                                                     )}
 
                                                     {onSelectDetail && (
                                                         <button 
                                                             style={{ 
-                                                                width: '100%', 
-                                                                padding: '6px', 
+                                                                flex: 1, 
+                                                                padding: '8px', 
                                                                 background: '#f1f5f9', 
-                                                                color: '#334155', 
+                                                                color: '#0f172a', 
                                                                 border: '1px solid #cbd5e1', 
-                                                                borderRadius: '5px', 
+                                                                borderRadius: '6px', 
                                                                 fontWeight: '700',
-                                                                fontSize: '0.75rem',
+                                                                fontSize: '0.78rem',
                                                                 cursor: 'pointer'
                                                             }}
                                                             onClick={() => onSelectDetail(selectedLocation)}
