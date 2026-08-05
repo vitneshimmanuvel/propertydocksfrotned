@@ -24,12 +24,22 @@ export default function ClientsManager({
     // Modal state for viewing an owner's properties
     const [selectedOwnerForPropertiesModal, setSelectedOwnerForPropertiesModal] = useState(null);
 
+    // Client form states with strict validation
+    const [clientNameVal, setClientNameVal] = useState('');
+    const [clientPhoneVal, setClientPhoneVal] = useState('+91');
+    const [clientAltPhoneVal, setClientAltPhoneVal] = useState('+91');
+    const [clientEmailVal, setClientEmailVal] = useState('');
+    const [clientAddressVal, setClientAddressVal] = useState('');
+    const [clientNotesVal, setClientNotesVal] = useState('');
+    const [isSavingClient, setIsSavingClient] = useState(false);
+
     // Property uploader modal states
     const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
     const [editingProperty, setEditingProperty] = useState(null);
     const [selectedClientForProperty, setSelectedClientForProperty] = useState(null);
     const [propertyTypeTab, setPropertyTypeTab] = useState('residential');
     const [selectedCategory, setSelectedCategory] = useState('residential');
+    const [selectedTxnType, setSelectedTxnType] = useState('for_sale');
     
     // Lat / Lng inputs state
     const [latInputVal, setLatInputVal] = useState('');
@@ -117,6 +127,29 @@ export default function ClientsManager({
     }, [database.clients, database.ownerListings]);
 
     // Filtered clients list
+    // Modal reset helpers for client form
+    const openAddClientModal = () => {
+        setEditingClient(null);
+        setClientNameVal('');
+        setClientPhoneVal('+91');
+        setClientAltPhoneVal('+91');
+        setClientEmailVal('');
+        setClientAddressVal('');
+        setClientNotesVal('');
+        setIsAddModalOpen(true);
+    };
+
+    const openEditClientModal = (client) => {
+        setEditingClient(client);
+        setClientNameVal(client.name || '');
+        setClientPhoneVal(client.phone || '+91');
+        setClientAltPhoneVal(client.alternatePhone || '+91');
+        setClientEmailVal(client.email && client.email !== '—' ? client.email : '');
+        setClientAddressVal(client.address || '');
+        setClientNotesVal(client.notes || '');
+        setIsAddModalOpen(true);
+    };
+
     const filteredClients = useMemo(() => {
         return clients.filter(c => {
             return (c.name && c.name.toLowerCase().includes(searchQuery.toLowerCase())) || 
@@ -129,31 +162,42 @@ export default function ClientsManager({
     // Save Client handler
     const handleSaveClient = async (e) => {
         e.preventDefault();
-        const form = e.target;
-        const name = form.clientName.value.trim();
-        const phone = form.clientPhone.value.trim();
-        const alternatePhone = form.clientAlternatePhone.value.trim();
-        const email = form.clientEmail.value.trim();
-        const address = form.clientAddress.value.trim();
-        const notes = form.clientNotes.value.trim();
+        const name = clientNameVal.trim();
+        const phone = clientPhoneVal.trim();
+        const alternatePhone = clientAltPhoneVal.trim();
+        const email = clientEmailVal.trim();
+        const address = clientAddressVal.trim();
+        const notes = clientNotesVal.trim();
 
-        if (!name || !phone) {
-            if (showToast) showToast("Property Owner name and phone number are required", "warning");
+        if (!name) {
+            if (showToast) showToast("Owner Full Name is required (letters only)", "warning");
+            return;
+        }
+
+        if (!phone || phone === '+91') {
+            if (showToast) showToast("Mobile Phone Number is required", "warning");
             return;
         }
 
         if (!validatePhoneNumber(phone)) {
-            if (showToast) showToast("Primary phone must have country code & exactly 10 digits (e.g. +91 9876543210)", "error");
+            if (showToast) showToast("Primary phone must have country code & exactly 10 digits (e.g. +919876543210)", "error");
             return;
         }
 
-        if (alternatePhone && alternatePhone !== '+91' && !validatePhoneNumber(alternatePhone)) {
-            if (showToast) showToast("Alternative phone must have country code & exactly 10 digits", "error");
+        if (!email) {
+            if (showToast) showToast("Email Address is required", "warning");
             return;
         }
 
+        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+        if (!emailRegex.test(email)) {
+            if (showToast) showToast("Please enter a valid email address (e.g. name@domain.com)", "error");
+            return;
+        }
+
+        setIsSavingClient(true);
         const newDb = { ...database };
-        newDb.clients = newDb.clients || [];
+        newDb.clients = [...(newDb.clients || [])];
 
         if (editingClient) {
             newDb.clients = newDb.clients.map(c => {
@@ -177,16 +221,16 @@ export default function ClientsManager({
                 name,
                 phone,
                 alternatePhone: alternatePhone === '+91' ? '' : alternatePhone,
-                email: email || '—',
+                email,
                 address: address || '',
                 notes: notes || '',
                 createdAt: new Date().toISOString()
             };
-            newDb.clients.push(newClient);
+            newDb.clients.unshift(newClient);
         }
 
         try {
-            if (setDatabase) setDatabase(newDb);
+            if (setDatabase) setDatabase({ ...newDb });
             await saveFullDatabase(newDb);
             if (showToast) showToast(editingClient ? "Property Owner updated successfully!" : "Property Owner registered into directory!", "success");
             setIsAddModalOpen(false);
@@ -194,6 +238,8 @@ export default function ClientsManager({
         } catch (err) {
             console.error(err);
             if (showToast) showToast("Failed to save property owner details", "error");
+        } finally {
+            setIsSavingClient(false);
         }
     };
 
@@ -299,9 +345,9 @@ export default function ClientsManager({
         const title = form.pTitle.value.trim();
         const category = form.pCategory.value;
         const transactionType = form.pTxn.value;
-        const price = parseFloat(form.pPrice.value) || 0;
-        const rentAmount = parseFloat(form.pRent.value) || 0;
-        const bogithuAmount = parseFloat(form.pBogithu.value) || 0;
+        const price = selectedTxnType === 'for_sale' ? (parseFloat(form.pPrice?.value) || 0) : 0;
+        const rentAmount = selectedTxnType === 'for_rent' ? (parseFloat(form.pRent?.value) || 0) : 0;
+        const bogithuAmount = 0;
         const sqft = form.pSqft.value.trim();
         const landArea = form.pLandArea ? form.pLandArea.value.trim() : '';
         const beds = parseInt(form.pBeds?.value || 0, 10);
@@ -388,7 +434,7 @@ export default function ClientsManager({
                 </div>
 
                 <button 
-                    onClick={() => { setEditingClient(null); setIsAddModalOpen(true); }}
+                    onClick={openAddClientModal}
                     style={{
                         padding: '10px 18px',
                         background: '#921214',
@@ -551,7 +597,7 @@ export default function ClientsManager({
                                                 </button>
 
                                                 <button 
-                                                    onClick={() => { setEditingClient(client); setIsAddModalOpen(true); }}
+                                                    onClick={() => openEditClientModal(client)}
                                                     style={{ background: 'var(--bg-main)', border: '1px solid var(--border-color)', color: 'var(--text-primary)', cursor: 'pointer', padding: '6px', borderRadius: '6px' }}
                                                     title="Edit Property Owner"
                                                 >
@@ -726,38 +772,94 @@ export default function ClientsManager({
 
                         <form onSubmit={handleSaveClient} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Owner Full Name <span style={{ color: '#ef4444' }}>*</span></label>
-                                <input type="text" name="clientName" defaultValue={editingClient ? editingClient.name : ''} placeholder="e.g. Anand Kumar" required style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} />
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Owner Full Name (Letters Only) <span style={{ color: '#ef4444' }}>*</span></label>
+                                <input 
+                                    type="text" 
+                                    name="clientName" 
+                                    value={clientNameVal} 
+                                    onChange={(e) => setClientNameVal(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+                                    placeholder="e.g. Anand Kumar" 
+                                    required 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} 
+                                />
                             </div>
 
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Mobile Phone <span style={{ color: '#ef4444' }}>*</span></label>
-                                    <input type="tel" name="clientPhone" defaultValue={editingClient ? editingClient.phone : '+91'} placeholder="+91 98765 43210" required style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} />
+                                    <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Mobile Phone (Digits Only) <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <input 
+                                        type="tel" 
+                                        name="clientPhone" 
+                                        value={clientPhoneVal} 
+                                        onChange={(e) => setClientPhoneVal(e.target.value.replace(/[^0-9+]/g, ''))}
+                                        placeholder="+919876543210" 
+                                        required 
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} 
+                                    />
                                 </div>
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Alternative Mobile Phone</label>
-                                    <input type="tel" name="clientAlternatePhone" defaultValue={editingClient ? editingClient.alternatePhone : '+91'} placeholder="Alternative phone number" style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} />
+                                    <input 
+                                        type="tel" 
+                                        name="clientAlternatePhone" 
+                                        value={clientAltPhoneVal} 
+                                        onChange={(e) => setClientAltPhoneVal(e.target.value.replace(/[^0-9+]/g, ''))}
+                                        placeholder="+919876543210" 
+                                        style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} 
+                                    />
                                 </div>
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Email Address</label>
-                                <input type="email" name="clientEmail" defaultValue={editingClient ? editingClient.email : ''} placeholder="anand@example.com" style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} />
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
+                                <input 
+                                    type="email" 
+                                    name="clientEmail" 
+                                    value={clientEmailVal} 
+                                    onChange={(e) => setClientEmailVal(e.target.value.trim())}
+                                    placeholder="anand@example.com" 
+                                    required
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} 
+                                />
                             </div>
 
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Location / Address</label>
-                                <input type="text" name="clientAddress" defaultValue={editingClient ? editingClient.address : ''} placeholder="e.g. Vijayamangalam, Erode" style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} />
+                                <input 
+                                    type="text" 
+                                    name="clientAddress" 
+                                    value={clientAddressVal} 
+                                    onChange={(e) => setClientAddressVal(e.target.value)}
+                                    placeholder="e.g. Vijayamangalam, Erode" 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} 
+                                />
                             </div>
 
                             <div>
                                 <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Notes / Requirements</label>
-                                <textarea name="clientNotes" rows="2" defaultValue={editingClient ? editingClient.notes : ''} placeholder="Property owner notes..." style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none', resize: 'none' }} />
+                                <textarea 
+                                    name="clientNotes" 
+                                    rows="2" 
+                                    value={clientNotesVal} 
+                                    onChange={(e) => setClientNotesVal(e.target.value)}
+                                    placeholder="Property owner notes..." 
+                                    style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none', resize: 'none' }} 
+                                />
                             </div>
 
-                            <button type="submit" style={{ width: '100%', padding: '12px', background: '#921214', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 800, fontSize: '0.95rem', cursor: 'pointer', marginTop: '6px' }}>
-                                {editingClient ? 'Save Property Owner Changes' : 'Register Property Owner'}
+                            <button 
+                                type="submit" 
+                                disabled={isSavingClient}
+                                style={{ width: '100%', padding: '12px', background: isSavingClient ? '#750d0f' : '#921214', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 800, fontSize: '0.95rem', cursor: isSavingClient ? 'not-allowed' : 'pointer', marginTop: '6px', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}
+                            >
+                                {isSavingClient ? (
+                                    <>
+                                        <span className="spinner-loader" style={{ border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid #fff', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 0.8s linear infinite' }}></span>
+                                        {editingClient ? 'Saving Changes...' : 'Registering Property Owner...'}
+                                    </>
+                                ) : (
+                                    editingClient ? 'Save Property Owner Changes' : 'Register Property Owner'
+                                )}
                             </button>
                         </form>
                     </div>
@@ -864,7 +966,6 @@ export default function ClientsManager({
                                                 <option value="rental_house">Rental House</option>
                                                 <option value="pg">PG Accommodation</option>
                                                 <option value="room">Room</option>
-                                                <option value="bogithu">Bogithu (Lease)</option>
                                             </>
                                         ) : (
                                             <>
@@ -881,27 +982,30 @@ export default function ClientsManager({
 
                                 <div>
                                     <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Transaction Type <span style={{ color: '#ef4444' }}>*</span></label>
-                                    <select name="pTxn" defaultValue={editingProperty ? editingProperty.transactionType : 'for_sale'} style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }}>
+                                    <select 
+                                        name="pTxn" 
+                                        value={selectedTxnType} 
+                                        onChange={(e) => setSelectedTxnType(e.target.value)} 
+                                        style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }}
+                                    >
                                         <option value="for_sale">For Sale</option>
                                         <option value="for_rent">For Rent</option>
-                                        <option value="lease">Lease (Bogithu)</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Sale Price (₹)</label>
-                                    <input type="number" name="pPrice" defaultValue={editingProperty ? editingProperty.price : 0} placeholder="e.g. 4500000" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Monthly Rent (₹)</label>
-                                    <input type="number" name="pRent" defaultValue={editingProperty ? editingProperty.rentAmount : 0} placeholder="e.g. 15000" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
-                                </div>
-                                <div>
-                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Lease / Bogithu (₹)</label>
-                                    <input type="number" name="pBogithu" defaultValue={editingProperty ? editingProperty.bogithuAmount : 0} placeholder="e.g. 1000000" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
-                                </div>
+                            <div>
+                                {selectedTxnType === 'for_sale' ? (
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Sale Price (₹) <span style={{ color: '#ef4444' }}>*</span></label>
+                                        <input type="number" name="pPrice" defaultValue={editingProperty ? editingProperty.price : ''} placeholder="e.g. 4500000" required style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                    </div>
+                                ) : (
+                                    <div>
+                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Monthly Rent (₹) <span style={{ color: '#ef4444' }}>*</span></label>
+                                        <input type="number" name="pRent" defaultValue={editingProperty ? editingProperty.rentAmount : ''} placeholder="e.g. 15000" required style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                    </div>
+                                )}
                             </div>
 
                             {/* Dynamic Mode-Specific Fields */}
@@ -1139,8 +1243,8 @@ export default function ClientsManager({
                                                         <span style={{ fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-primary)', textTransform: 'uppercase' }}>
                                                             {item.type === 'video' || item.url.includes('video') ? '🎬 Video' : '📷 Photo / Image Link'}
                                                         </span>
-                                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                                            {item.url}
+                                                        <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
+                                                            Showcase Asset #{idx + 1}
                                                         </span>
                                                     </div>
                                                 </div>

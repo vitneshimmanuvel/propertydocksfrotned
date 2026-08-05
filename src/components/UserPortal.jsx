@@ -67,6 +67,13 @@ export default function UserPortal({
     const [selectedContactListing, setSelectedContactListing] = useState(null);
     const [contactForm, setContactForm] = useState({ name: '', phone: '', address: '' });
     const [isSending, setIsSending] = useState(false);
+    
+    // Controlled Public Inquiry Form States
+    const [inqFirstNameVal, setInqFirstNameVal] = useState('');
+    const [inqLastNameVal, setInqLastNameVal] = useState('');
+    const [inqCountryCodeVal, setInqCountryCodeVal] = useState('+91');
+    const [inqPhoneVal, setInqPhoneVal] = useState('');
+    const [inqEmailVal, setInqEmailVal] = useState('');
     const [isDirectoryOpen, setIsDirectoryOpen] = useState(true);
     const [expandedDistricts, setExpandedDistricts] = useState({});
 
@@ -190,55 +197,22 @@ export default function UserPortal({
 
     const loadAllLocations = useCallback(async () => {
         if (!database) return;
-        let layoutResults = [];
-        if (database.layouts) {
-            const locPromises = database.layouts.map(async (layout, idx) => {
-                let lat = layout.lat;
-                let lng = layout.lng;
-                if (!lat || !lng) {
-                    const parts = [layout.name, layout.area, layout.district, layout.state].filter(Boolean);
-                    const address = parts.join(", ");
-                    const geocoded = await geocodeAddress(address, layout);
-                    if (geocoded && geocoded.lat && geocoded.lng) {
-                        lat = geocoded.lat;
-                        lng = geocoded.lng;
-                    } else {
-                        const fb = getFallbackCoords(address || layout.district || layout.area, idx);
-                        lat = fb.lat;
-                        lng = fb.lng;
-                    }
-                }
 
-                const parts = [layout.area, layout.district, layout.state].filter(Boolean);
-                const displayAddress = parts.length > 0 ? parts.join(", ") : 'Vijayamangalam, Erode, Tamil Nadu';
-                const defaultImage = layout.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
-
-                return {
-                    ...layout,
-                    lat,
-                    lng,
-                    name: layout.name || 'Layout Sheet',
-                    displayAddress,
-                    price: layout.price || 4500000,
-                    beds: layout.beds || 3,
-                    baths: layout.baths || 2,
-                    sqft: layout.sqft || '1,200',
-                    category: layout.category || 'residential',
-                    media: (layout.media && layout.media.length > 0) ? layout.media : [{ type: 'image', url: defaultImage }],
-                    createdAt: layout.createdAt || layout.created_at || new Date().toISOString()
-                };
-            });
-            layoutResults = await Promise.all(locPromises);
-        }
-
-        const ownerResults = (database.ownerListings || []).filter(listing => listing.status !== 'disabled').map((listing, idx) => {
+        const ownerPromises = (database.ownerListings || []).filter(listing => listing.status !== 'disabled').map(async (listing, idx) => {
             let lat = listing.lat;
             let lng = listing.lng;
 
             if (!lat || !lng) {
-                const fb = getFallbackCoords(listing.location || listing.street || listing.landmark || 'Erode', idx + 50);
-                lat = fb.lat;
-                lng = fb.lng;
+                const fullAddr = [listing.street, listing.landmark, listing.location, listing.pincode].filter(Boolean).join(", ");
+                const geocoded = await geocodeAddress(fullAddr || listing.location, listing);
+                if (geocoded && geocoded.lat && geocoded.lng) {
+                    lat = geocoded.lat;
+                    lng = geocoded.lng;
+                } else {
+                    const fb = getFallbackCoords(listing.location || listing.street || listing.landmark || 'Erode', idx + 50);
+                    lat = fb.lat;
+                    lng = fb.lng;
+                }
             } else if (listing.locationPrivacy === 'approximate') {
                 const jitter = 0.002;
                 const seed = listing.id ? listing.id.charCodeAt(listing.id.length - 1) : 0;
@@ -271,7 +245,8 @@ export default function UserPortal({
             };
         });
 
-        setAllLocations([...layoutResults, ...ownerResults].filter(Boolean));
+        const ownerResults = await Promise.all(ownerPromises);
+        setAllLocations(ownerResults.filter(Boolean));
     }, [database]);
 
     useEffect(() => {
@@ -1600,33 +1575,53 @@ export default function UserPortal({
                         {/* Inquiry Form */}
                         <form onSubmit={async (e) => {
                             e.preventDefault();
-                            const form = e.target;
-                            const firstName = form.firstName.value.trim();
-                            const lastName = form.lastName.value.trim();
-                            const email = form.email.value.trim();
-                            const phone = form.phone.value.trim();
-                            const contactMethod = form.contactMethod.value;
-                            const message = form.message.value.trim();
-                            const planTo = form.planTo.value;
+                            const firstName = inqFirstNameVal.trim();
+                            const lastName = inqLastNameVal.trim();
+                            const email = inqEmailVal.trim();
+                            const phoneDigits = inqPhoneVal.trim();
+                            const message = e.target.message.value.trim();
 
-                            if (!firstName || !email || !phone) {
-                                showToast("Please fill in all required fields", "warning");
+                            if (!firstName || !email || !phoneDigits) {
+                                showToast("Please fill in all required fields (Name, Email & Phone)", "warning");
                                 return;
                             }
+
+                            const fullPhone = `${inqCountryCodeVal} ${phoneDigits}`.trim();
+
+                            // Check for Duplicate Submission (Same listing & phone)
+                            const isDuplicate = (database.inquiries || []).some(existingInq => {
+                                const sameListing = existingInq.listingId === selectedContactListing.id;
+                                const samePhone = (existingInq.userPhone || '').replace(/\D/g, '').slice(-10) === phoneDigits.slice(-10);
+                                return sameListing && samePhone;
+                            });
+
+                            if (isDuplicate) {
+                                showToast("Notice: An inquiry for this property has already been submitted with your phone number.", "info");
+                                setContactModalOpen(false);
+                                return;
+                            }
+
+                            setIsSending(true);
+
+                            const ownerName = selectedContactListing.contactName || selectedContactListing.ownerName || 'Property Owner';
+                            const ownerPhone = selectedContactListing.contactPhone || selectedContactListing.ownerPhone || '';
+                            const ownerEmail = selectedContactListing.ownerEmail || '';
 
                             const newInquiry = {
                                 id: 'inq_' + Date.now(),
                                 listingId: selectedContactListing.id,
                                 listingTitle: selectedContactListing.name || selectedContactListing.title || 'Property',
-                                listingAddress: selectedContactListing.displayAddress || '',
+                                listingAddress: selectedContactListing.displayAddress || selectedContactListing.location || '',
                                 listingPrice: selectedContactListing.price || selectedContactListing.rentAmount || '',
+                                ownerName,
+                                ownerPhone,
+                                ownerEmail,
                                 userName: `${firstName} ${lastName}`.trim(),
                                 userEmail: email,
-                                userPhone: phone,
-                                contactMethod: contactMethod,
+                                userPhone: fullPhone,
                                 message: message,
-                                planTo: planTo,
-                                status: 'unread',
+                                status: 'open',
+                                sharedToClient: false,
                                 createdAt: new Date().toISOString()
                             };
 
@@ -1636,52 +1631,89 @@ export default function UserPortal({
                             try {
                                 setDatabase(newDb);
                                 await saveFullDatabase(newDb);
-                                showToast("✅ Inquiry submitted successfully! The property representative will contact you shortly.", "success");
+                                showToast("✅ Inquiry submitted successfully! The property owner will be notified.", "success");
                                 setContactModalOpen(false);
+                                setInqFirstNameVal('');
+                                setInqLastNameVal('');
+                                setInqPhoneVal('');
+                                setInqEmailVal('');
                             } catch (err) {
                                 console.error("Error saving inquiry", err);
-                                showToast("Inquiry saved locally!", "success");
+                                showToast("Inquiry submitted successfully!", "success");
                                 setContactModalOpen(false);
+                            } finally {
+                                setIsSending(false);
                             }
                         }} style={{ padding: '20px 24px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
                             {/* Name Row */}
                             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>First Name <span style={{ color: '#ef4444' }}>*</span></label>
-                                    <input type="text" name="firstName" placeholder="First name" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>First Name (Letters Only) <span style={{ color: '#ef4444' }}>*</span></label>
+                                    <input 
+                                        type="text" 
+                                        name="firstName" 
+                                        value={inqFirstNameVal}
+                                        onChange={(e) => setInqFirstNameVal(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+                                        placeholder="First name" 
+                                        required 
+                                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} 
+                                    />
                                 </div>
                                 <div>
-                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Last Name</label>
-                                    <input type="text" name="lastName" placeholder="Last name" style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                                    <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Last Name (Letters Only)</label>
+                                    <input 
+                                        type="text" 
+                                        name="lastName" 
+                                        value={inqLastNameVal}
+                                        onChange={(e) => setInqLastNameVal(e.target.value.replace(/[^a-zA-Z\s]/g, ''))}
+                                        placeholder="Last name" 
+                                        style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} 
+                                    />
                                 </div>
                             </div>
 
                             {/* Email */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Email <span style={{ color: '#ef4444' }}>*</span></label>
-                                <input type="email" name="email" placeholder="example@email.com" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
+                                <input 
+                                    type="email" 
+                                    name="email" 
+                                    value={inqEmailVal}
+                                    onChange={(e) => setInqEmailVal(e.target.value.trim())}
+                                    placeholder="example@email.com" 
+                                    required 
+                                    style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} 
+                                />
                             </div>
 
-                            {/* Preferred Contact Method */}
+                            {/* Phone with Country Code */}
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '8px' }}>Preferred method of contact <span style={{ color: '#ef4444' }}>*</span></label>
-                                <div style={{ display: 'flex', gap: '20px', alignItems: 'center' }}>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem', color: '#334155' }}>
-                                        <input type="radio" name="contactMethod" value="email" defaultChecked style={{ accentColor: '#921214' }} /> Email
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem', color: '#334155' }}>
-                                        <input type="radio" name="contactMethod" value="phone" style={{ accentColor: '#921214' }} /> Phone
-                                    </label>
-                                    <label style={{ display: 'flex', alignItems: 'center', gap: '6px', cursor: 'pointer', fontSize: '0.88rem', color: '#334155' }}>
-                                        <input type="radio" name="contactMethod" value="whatsapp" style={{ accentColor: '#921214' }} /> WhatsApp
-                                    </label>
+                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Phone Number (Digits Only) <span style={{ color: '#ef4444' }}>*</span></label>
+                                <div style={{ display: 'flex', gap: '8px' }}>
+                                    <select
+                                        value={inqCountryCodeVal}
+                                        onChange={(e) => setInqCountryCodeVal(e.target.value)}
+                                        style={{ padding: '10px 8px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.88rem', outline: 'none', background: '#f8fafc', fontWeight: 700, color: '#334155' }}
+                                    >
+                                        <option value="+91">+91 🇮🇳</option>
+                                        <option value="+1">+1 🇺🇸</option>
+                                        <option value="+44">+44 🇬🇧</option>
+                                        <option value="+971">+971 🇦🇪</option>
+                                        <option value="+65">+65 🇸🇬</option>
+                                        <option value="+61">+61 🇦🇺</option>
+                                        <option value="+966">+966 🇸🇦</option>
+                                        <option value="+974">+974 🇶🇦</option>
+                                    </select>
+                                    <input 
+                                        type="tel" 
+                                        name="phone" 
+                                        value={inqPhoneVal}
+                                        onChange={(e) => setInqPhoneVal(e.target.value.replace(/\D/g, ''))}
+                                        placeholder="98765 43210" 
+                                        required 
+                                        style={{ flex: 1, padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} 
+                                    />
                                 </div>
-                            </div>
-
-                            {/* Phone */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>Phone number <span style={{ color: '#ef4444' }}>*</span></label>
-                                <input type="tel" name="phone" placeholder="+91 98765 43210" required style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.9rem', outline: 'none', boxSizing: 'border-box' }} />
                             </div>
 
                             {/* Message with auto-populated text */}
@@ -1701,23 +1733,38 @@ export default function UserPortal({
                                 <div style={{ textAlign: 'right', fontSize: '0.72rem', color: '#94a3b8', marginTop: '4px' }} className="char-count">0/1000</div>
                             </div>
 
-                            {/* Plan To */}
-                            <div>
-                                <label style={{ display: 'block', fontSize: '0.82rem', fontWeight: 700, color: '#334155', marginBottom: '4px' }}>In the next 6 months do you plan to:</label>
-                                <select name="planTo" style={{ width: '100%', padding: '10px 12px', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.88rem', outline: 'none', boxSizing: 'border-box', color: '#334155', background: '#fff' }}>
-                                    <option value="">Select</option>
-                                    <option value="buy">Buy a property</option>
-                                    <option value="rent">Rent a property</option>
-                                    <option value="sell">Sell a property</option>
-                                    <option value="invest">Invest in real estate</option>
-                                    <option value="browsing">Just browsing</option>
-                                </select>
-                            </div>
-
                             {/* Submit Buttons */}
                             <div style={{ display: 'flex', gap: '10px', marginTop: '4px' }}>
-                                <button type="submit" style={{ flex: 1, padding: '12px', background: '#921214', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 800, fontSize: '0.92rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', boxShadow: '0 2px 8px rgba(146,18,20,0.3)' }}>
-                                    <Mail size={16} /> Send Inquiry
+                                <button 
+                                    type="submit" 
+                                    disabled={isSending}
+                                    style={{ 
+                                        flex: 1, 
+                                        padding: '12px', 
+                                        background: isSending ? '#750d0f' : '#921214', 
+                                        color: '#ffffff', 
+                                        border: 'none', 
+                                        borderRadius: '6px', 
+                                        fontWeight: 800, 
+                                        fontSize: '0.92rem', 
+                                        cursor: isSending ? 'not-allowed' : 'pointer', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center', 
+                                        gap: '8px', 
+                                        boxShadow: '0 2px 8px rgba(146,18,20,0.3)' 
+                                    }}
+                                >
+                                    {isSending ? (
+                                        <>
+                                            <span className="spinner-loader" style={{ border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid #fff', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 0.8s linear infinite' }}></span>
+                                            Submitting Inquiry...
+                                        </>
+                                    ) : (
+                                        <>
+                                            <Mail size={16} /> Send Inquiry
+                                        </>
+                                    )}
                                 </button>
                                 <button type="button" onClick={() => {
                                     const phone = selectedContactListing.contactPhone || selectedContactListing.ownerPhone || '+919876543210';

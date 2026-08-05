@@ -1,339 +1,263 @@
 import React, { useMemo } from 'react';
-import { BarChart3, TrendingUp, Download, PieChart, Landmark, Calendar, Printer } from 'lucide-react';
+import { BarChart3, TrendingUp, Download, PieChart, Landmark, Calendar, Printer, Users, Building, Home, MapPin, Eye, EyeOff } from 'lucide-react';
 
 export default function ReportsManager({ 
     database,
     showToast
 }) {
-    const layouts = database.layouts || [];
-    const bookings = database.bookings || [];
+    const ownerListings = database.ownerListings || [];
+    const clients = database.clients || [];
 
-    // Calculate report statistics
+    const COMMERCIAL_CATS = ['commercial', 'office', 'shop', 'warehouse', 'industrial', 'commercial_land', 'showroom'];
+
+    // Calculate live report statistics from PostgreSQL database
     const reportData = useMemo(() => {
-        let totalRevenue = 0;
-        let pendingAdvance = 0;
-        let totalPlots = 0;
-        let soldPlots = 0;
-        let bookedPlots = 0;
-        let premiumPlots = 0;
-        let generalPlots = 0;
+        const totalProperties = ownerListings.length;
+        const activeCount = ownerListings.filter(l => (l.status || 'available') === 'available').length;
+        const disabledCount = ownerListings.filter(l => l.status === 'disabled').length;
 
-        const layoutSales = layouts.map(l => {
-            let layoutPlotsCount = l.plots?.length || 0;
-            let layoutSold = 0;
-            let layoutBooked = 0;
-            let layoutRevenue = 0;
-            let totalEstVal = 0;
+        // Commercial vs Residential
+        const commercialListings = ownerListings.filter(l => COMMERCIAL_CATS.some(c => (l.category || '').toLowerCase().includes(c)));
+        const residentialListings = ownerListings.filter(l => !COMMERCIAL_CATS.some(c => (l.category || '').toLowerCase().includes(c)));
 
-            l.plots?.forEach(p => {
-                const plotArea = Number(p.area) || 1200;
-                const plotRate = Number(p.price) || 850;
-                const estVal = plotArea * plotRate;
-                totalEstVal += estVal;
+        // Location distribution
+        const locationMap = {};
+        ownerListings.forEach(l => {
+            const locName = l.location || l.district || 'Erode Region';
+            if (!locationMap[locName]) {
+                locationMap[locName] = { name: locName, total: 0, active: 0, disabled: 0, residential: 0, commercial: 0 };
+            }
+            locationMap[locName].total++;
+            if ((l.status || 'available') === 'available') locationMap[locName].active++;
+            else locationMap[locName].disabled++;
 
-                if (p.status === 'sold') layoutSold++;
-                else if (p.status === 'booked' || p.status === 'reserved') layoutBooked++;
-
-                if (p.category === 'premium') premiumPlots++;
-                else generalPlots++;
-            });
-
-            totalPlots += layoutPlotsCount;
-            soldPlots += layoutSold;
-            bookedPlots += layoutBooked;
-
-            // Get revenue for this layout
-            const layoutConfirmedBookings = bookings.filter(b => b.layoutId === l.id && b.status === 'confirmed');
-            const layoutPendingBookings = bookings.filter(b => b.layoutId === l.id && b.status === 'pending');
-            
-            const confirmedAmt = layoutConfirmedBookings.reduce((sum, b) => sum + (Number(b.amountPaid) || 0), 0);
-            const pendingAmt = layoutPendingBookings.reduce((sum, b) => sum + (Number(b.amountPaid) || 0), 0);
-            
-            totalRevenue += confirmedAmt;
-            pendingAdvance += pendingAmt;
-
-            return {
-                id: l.id,
-                name: l.name,
-                location: `${l.area}, ${l.district}`,
-                totalPlots: layoutPlotsCount,
-                sold: layoutSold,
-                booked: layoutBooked,
-                occupancyRate: layoutPlotsCount > 0 ? Math.round(((layoutSold + layoutBooked) / layoutPlotsCount) * 100) : 0,
-                revenue: confirmedAmt,
-                pendingRevenue: pendingAmt,
-                estimatedValue: totalEstVal
-            };
-        });
-
-        // Payment methods statistics
-        const paymentStats = {
-            upi: 0,
-            bank_transfer: 0,
-            card: 0,
-            cash: 0
-        };
-
-        const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-        confirmedBookings.forEach(b => {
-            const method = b.paymentMethod || 'upi';
-            if (paymentStats[method] !== undefined) {
-                paymentStats[method] += Number(b.amountPaid) || 0;
+            if (COMMERCIAL_CATS.some(c => (l.category || '').toLowerCase().includes(c))) {
+                locationMap[locName].commercial++;
             } else {
-                paymentStats.upi += Number(b.amountPaid) || 0;
+                locationMap[locName].residential++;
             }
         });
 
+        const locationList = Object.values(locationMap).sort((a, b) => b.total - a.total);
+
+        // Owner breakdown
+        const ownerSummaryMap = {};
+        clients.forEach(c => {
+            ownerSummaryMap[c.phone] = {
+                name: c.name,
+                phone: c.phone,
+                email: c.email || '—',
+                location: c.location || '—',
+                totalProps: 0,
+                activeProps: 0
+            };
+        });
+
+        ownerListings.forEach(l => {
+            const phoneKey = l.contactPhone || l.ownerPhone;
+            if (phoneKey && ownerSummaryMap[phoneKey]) {
+                ownerSummaryMap[phoneKey].totalProps++;
+                if ((l.status || 'available') === 'available') ownerSummaryMap[phoneKey].activeProps++;
+            }
+        });
+
+        const ownerList = Object.values(ownerSummaryMap);
+
         return {
-            totalRevenue,
-            pendingAdvance,
-            totalPlots,
-            soldPlots,
-            bookedPlots,
-            premiumPlots,
-            generalPlots,
-            layoutSales,
-            paymentStats
+            totalProperties,
+            activeCount,
+            disabledCount,
+            residentialCount: residentialListings.length,
+            commercialCount: commercialListings.length,
+            totalOwners: clients.length,
+            locationList,
+            ownerList
         };
-    }, [layouts, bookings]);
+    }, [ownerListings, clients]);
 
-    // Format currency in Indian Rupees style
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0
-        }).format(amount);
-    };
-
-    // Export layout stats to CSV
-    const exportToCSV = () => {
-        try {
-            const headers = ['Layout Name', 'Location', 'Total Plots', 'Sold Plots', 'Booked Plots', 'Occupancy Rate (%)', 'Confirmed Revenue (₹)', 'Pending Revenue (₹)', 'Estimated Layout Value (₹)'];
-            const rows = reportData.layoutSales.map(l => [
-                l.name,
-                l.location,
-                l.totalPlots,
-                l.sold,
-                l.booked,
-                `${l.occupancyRate}%`,
-                l.revenue,
-                l.pendingRevenue,
-                l.estimatedValue
-            ]);
-
-            const csvContent = "data:text/csv;charset=utf-8," 
-                + [headers.join(','), ...rows.map(e => e.map(val => `"${val}"`).join(','))].join('\n');
-            
-            const encodedUri = encodeURI(csvContent);
-            const link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Property Docs_Sales_Report_${Date.now()}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            showToast("CSV report exported successfully.", "success");
-        } catch (e) {
-            showToast("Failed to export CSV report.", "error");
+    // Handle CSV Download Export
+    const exportCSVReport = () => {
+        if (ownerListings.length === 0) {
+            showToast && showToast('No properties available to export.', 'warning');
+            return;
         }
-    };
 
-    // Print window helper
-    const handlePrint = () => {
-        window.print();
+        const headers = ["Property ID", "Title", "Owner Name", "Owner Phone", "Category", "Location", "Price/Rent", "Status", "Created At"];
+        const rows = ownerListings.map(l => [
+            `"${l.id}"`,
+            `"${(l.title || '').replace(/"/g, '""')}"`,
+            `"${(l.contactName || '').replace(/"/g, '""')}"`,
+            `"${l.contactPhone || l.ownerPhone || ''}"`,
+            `"${l.category || 'residential'}"`,
+            `"${(l.location || '').replace(/"/g, '""')}"`,
+            `"${l.price || l.rentAmount || l.bogithuAmount || 0}"`,
+            `"${l.status || 'available'}"`,
+            `"${l.createdAt || l.created_at || ''}"`
+        ]);
+
+        const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(e => e.join(","))].join("\n");
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement("a");
+        link.setAttribute("href", encodedUri);
+        link.setAttribute("download", `Property_Inventory_Report_${new Date().toISOString().slice(0, 10)}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        showToast && showToast('Property Inventory CSV Report exported successfully!', 'success');
     };
 
     return (
-        <div className="reports-dashboard" style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto', background: 'var(--bg-main)' }}>
+        <div className="reports-view" style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto', background: 'var(--bg-main)' }}>
             
-            {/* Header */}
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
+            {/* Header & Export Actions */}
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '16px' }}>
                 <div>
                     <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <BarChart3 size={24} style={{ color: 'var(--primary)' }} /> Financial & Sales Reports
+                        <BarChart3 size={24} style={{ color: 'var(--primary)' }} /> Property Analytics & Inventory Reports
                     </h2>
-                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Analyze land development sales charts, payment collections, and download Excel-ready CSV files.</p>
+                    <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Comprehensive live database breakdown of property owners, categories, locations, and public availability status.</p>
                 </div>
-                
-                {/* Actions */}
-                <div style={{ display: 'flex', gap: '8px' }}>
-                    <button className="btn-secondary" onClick={handlePrint} style={{ padding: '8px 14px', fontSize: '0.82rem', borderRadius: 'var(--radius-sm)', gap: '6px' }}>
+
+                <div style={{ display: 'flex', gap: '12px' }}>
+                    <button 
+                        onClick={() => window.print()} 
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#f1f5f9', color: '#0f172a', border: '1px solid #cbd5e1', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer' }}
+                    >
                         <Printer size={16} /> Print Report
                     </button>
-                    <button className="btn-primary" onClick={exportToCSV} style={{ padding: '8px 14px', fontSize: '0.82rem', borderRadius: 'var(--radius-sm)', gap: '6px' }}>
+                    <button 
+                        onClick={exportCSVReport} 
+                        style={{ display: 'flex', alignItems: 'center', gap: '8px', padding: '8px 16px', background: '#921214', color: '#ffffff', border: 'none', borderRadius: '6px', fontSize: '0.82rem', fontWeight: 700, cursor: 'pointer', boxShadow: '0 2px 6px rgba(146,18,20,0.2)' }}
+                    >
                         <Download size={16} /> Export CSV
                     </button>
                 </div>
             </div>
 
-            {/* Financial Overview Metrics */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '20px' }}>
-                {/* Total confirmed revenue */}
-                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                        <TrendingUp size={24} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Confirmed Advance Collections</span>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>{formatCurrency(reportData.totalRevenue)}</div>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>From approved bookings</span>
-                    </div>
-                </div>
-
-                {/* Pending revenue */}
-                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
-                        <Calendar size={24} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Pending Advance Approvals</span>
-                        <div style={{ fontSize: '1.6rem', fontWeight: 800, color: 'var(--text-primary)' }}>{formatCurrency(reportData.pendingAdvance)}</div>
-                        <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>Bookings awaiting verification</span>
-                    </div>
-                </div>
-
-                {/* Total plots breakdown */}
-                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-                    <div style={{ padding: '12px', borderRadius: '8px', background: 'rgba(99,102,241,0.1)', color: 'var(--primary)' }}>
-                        <Landmark size={24} />
-                    </div>
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', flex: 1 }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Plot Category Distribution</span>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem', color: 'var(--text-primary)', marginTop: '4px' }}>
-                            <span>★ Premium: <strong>{reportData.premiumPlots}</strong></span>
-                            <span>General: <strong>{reportData.generalPlots}</strong></span>
-                        </div>
-                        <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden', display: 'flex', marginTop: '6px' }}>
-                            <div style={{ width: `${reportData.totalPlots > 0 ? (reportData.premiumPlots / reportData.totalPlots) * 100 : 0}%`, height: '100%', background: 'var(--primary)' }}></div>
-                            <div style={{ flex: 1, height: '100%', background: '#8b5cf6' }}></div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Layout sales summary table */}
-            <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    <Landmark size={18} style={{ color: 'var(--primary)' }} /> Project Performance Breakdown
-                </h3>
-                <div style={{ overflowX: 'auto' }}>
-                    <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
-                        <thead>
-                            <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)', background: 'rgba(255,255,255,0.01)' }}>
-                                <th style={{ padding: '12px 10px' }}>Layout Project</th>
-                                <th style={{ padding: '12px 10px' }}>Location</th>
-                                <th style={{ padding: '12px 10px' }}>Total Plots</th>
-                                <th style={{ padding: '12px 10px' }}>Sold/Booked</th>
-                                <th style={{ padding: '12px 10px' }}>Occupancy</th>
-                                <th style={{ padding: '12px 10px' }}>Est. Total Valuation</th>
-                                <th style={{ padding: '12px 10px' }}>Revenue (Advance)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {reportData.layoutSales.map(l => (
-                                <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.02)', color: 'var(--text-primary)' }}>
-                                    <td style={{ padding: '14px 10px', fontWeight: 700 }}>{l.name}</td>
-                                    <td style={{ padding: '14px 10px', color: 'var(--text-secondary)' }}>{l.location}</td>
-                                    <td style={{ padding: '14px 10px' }}>{l.totalPlots}</td>
-                                    <td style={{ padding: '14px 10px' }}>
-                                        <span style={{ color: '#10b981', fontWeight: 600 }}>{l.sold}</span> / <span style={{ color: '#f59e0b' }}>{l.booked}</span>
-                                    </td>
-                                    <td style={{ padding: '14px 10px' }}>
-                                        <span style={{ fontWeight: 600, color: l.occupancyRate > 75 ? '#10b981' : l.occupancyRate > 40 ? 'var(--primary)' : 'var(--text-muted)' }}>
-                                            {l.occupancyRate}%
-                                        </span>
-                                    </td>
-                                    <td style={{ padding: '14px 10px', color: 'var(--text-secondary)' }}>{formatCurrency(l.estimatedValue)}</td>
-                                    <td style={{ padding: '14px 10px', fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(l.revenue)}</td>
-                                </tr>
-                            ))}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Bottom Row: Payment methods share */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px', flexWrap: 'wrap' }}>
+            {/* KPI Summary Cards Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px' }}>
                 
-                {/* Payment Methods revenue ledger */}
+                {/* Total Properties */}
+                <div style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Total Database Listings</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(146,18,20,0.1)', color: '#921214' }}>
+                            <Landmark size={16} />
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{reportData.totalProperties}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Registered Property Items</span>
+                </div>
+
+                {/* Active Public Listings */}
+                <div style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Active Public Listings</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(34,197,94,0.1)', color: '#22c55e' }}>
+                            <Eye size={16} />
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#22c55e' }}>{reportData.activeCount}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Visible on Public Website</span>
+                </div>
+
+                {/* Disabled Listings */}
+                <div style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Disabled / Offline Listings</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                            <EyeOff size={16} />
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ef4444' }}>{reportData.disabledCount}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Hidden from Public Website</span>
+                </div>
+
+                {/* Property Owners */}
+                <div style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Property Owners</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: '#6366f1' }}>
+                            <Users size={16} />
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{reportData.totalOwners}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Registered Owner Accounts</span>
+                </div>
+
+            </div>
+
+            {/* Middle Section: Location Breakdown & Owners Summary */}
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                
+                {/* Location Distribution Table */}
                 <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                        <PieChart size={18} style={{ color: 'var(--primary)' }} /> Revenue Share by Payment Method
-                    </h3>
-                    
-                    <div style={{ display: 'flex', flexDirection: 'column', gap: '14px', marginTop: '10px' }}>
-                        {/* UPI */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                <span style={{ fontWeight: 600 }}>UPI (GPay / PhonePe / Paytm)</span>
-                                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{formatCurrency(reportData.paymentStats.upi)}</span>
-                            </div>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}>
-                                <div style={{ 
-                                    width: `${reportData.totalRevenue > 0 ? (reportData.paymentStats.upi / reportData.totalRevenue) * 100 : 0}%`, 
-                                    height: '100%', 
-                                    background: 'var(--primary)' 
-                                }}></div>
-                            </div>
-                        </div>
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Location Distribution</h3>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Listings grouped by city & district</span>
+                    </div>
 
-                        {/* Net Banking */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                <span style={{ fontWeight: 600 }}>Net Banking / RTGS / IMPS</span>
-                                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{formatCurrency(reportData.paymentStats.bank_transfer)}</span>
-                            </div>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}>
-                                <div style={{ 
-                                    width: `${reportData.totalRevenue > 0 ? (reportData.paymentStats.bank_transfer / reportData.totalRevenue) * 100 : 0}%`, 
-                                    height: '100%', 
-                                    background: '#8b5cf6' 
-                                }}></div>
-                            </div>
-                        </div>
-
-                        {/* Credit/Debit Cards */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                <span style={{ fontWeight: 600 }}>Credit / Debit Cards</span>
-                                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{formatCurrency(reportData.paymentStats.card)}</span>
-                            </div>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}>
-                                <div style={{ 
-                                    width: `${reportData.totalRevenue > 0 ? (reportData.paymentStats.card / reportData.totalRevenue) * 100 : 0}%`, 
-                                    height: '100%', 
-                                    background: '#10b981' 
-                                }}></div>
-                            </div>
-                        </div>
-
-                        {/* Cash */}
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.8rem' }}>
-                                <span style={{ fontWeight: 600 }}>Direct Cash Deposit</span>
-                                <span style={{ color: 'var(--primary)', fontWeight: 700 }}>{formatCurrency(reportData.paymentStats.cash)}</span>
-                            </div>
-                            <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px' }}>
-                                <div style={{ 
-                                    width: `${reportData.totalRevenue > 0 ? (reportData.paymentStats.cash / reportData.totalRevenue) * 100 : 0}%`, 
-                                    height: '100%', 
-                                    background: '#f59e0b' 
-                                }}></div>
-                            </div>
-                        </div>
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                    <th style={{ padding: '10px 8px' }}>Location</th>
+                                    <th style={{ padding: '10px 8px' }}>Total</th>
+                                    <th style={{ padding: '10px 8px' }}>Active</th>
+                                    <th style={{ padding: '10px 8px' }}>Types</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reportData.locationList.map(loc => (
+                                    <tr key={loc.name} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '10px 8px', fontWeight: 700, color: 'var(--text-primary)' }}>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                <MapPin size={14} style={{ color: 'var(--primary)' }} />
+                                                <span>{loc.name}</span>
+                                            </div>
+                                        </td>
+                                        <td style={{ padding: '10px 8px', fontWeight: 700 }}>{loc.total}</td>
+                                        <td style={{ padding: '10px 8px', color: '#22c55e', fontWeight: 700 }}>{loc.active}</td>
+                                        <td style={{ padding: '10px 8px', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                                            🏠 {loc.residential} Res | 🏢 {loc.commercial} Comm
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
                     </div>
                 </div>
 
-                {/* Helpful notes / print details */}
-                <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px', justifyContent: 'center' }}>
-                    <h4 style={{ fontSize: '0.85rem', fontWeight: 700, color: 'var(--text-primary)' }}>Business Audit Details</h4>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-secondary)', lineHeight: '1.5' }}>
-                        This statement calculates real-time advance tokens paid by buyers. It represents the active capital reserve for Property Docs. 
-                        To print a clean official summary, click the "Print Report" action at the top right, which will trigger the browser's native print screen styled with layout breakdowns.
-                    </p>
-                    <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-                        * Valuation estimations are calculated based on: Plot Area (sq.ft) × Plot Rate (₹/sq.ft).
-                    </p>
+                {/* Property Owners Summary */}
+                <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Property Owners Summary</h3>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Registered owner contacts & property portfolios</span>
+                    </div>
+
+                    <div style={{ overflowX: 'auto' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                            <thead>
+                                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase' }}>
+                                    <th style={{ padding: '10px 8px' }}>Owner Name</th>
+                                    <th style={{ padding: '10px 8px' }}>Phone</th>
+                                    <th style={{ padding: '10px 8px' }}>Properties</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reportData.ownerList.map(owner => (
+                                    <tr key={owner.phone} style={{ borderBottom: '1px solid var(--border-color)' }}>
+                                        <td style={{ padding: '10px 8px', fontWeight: 700, color: 'var(--text-primary)' }}>{owner.name}</td>
+                                        <td style={{ padding: '10px 8px', color: 'var(--text-secondary)' }}>{owner.phone}</td>
+                                        <td style={{ padding: '10px 8px' }}>
+                                            <span style={{ fontWeight: 800, color: 'var(--primary)' }}>{owner.totalProps}</span> Properties ({owner.activeProps} active)
+                                        </td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    </div>
                 </div>
 
             </div>

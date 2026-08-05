@@ -122,19 +122,24 @@ export default function GlobalMap({
                 const newLng = c.lng();
                 setMapCenterState({ lat: newLat, lng: newLng });
                 setMapZoomState(z);
+                
+                // Auto-close open property popup when zoomed out past region level (zoom < 9)
+                if (z < 9 && selectedLocation) {
+                    setSelectedLocation(null);
+                }
             }
         }
-    }, []);
+    }, [selectedLocation]);
 
-    // Auto-dismiss InfoWindow popup if the selected location is no longer present in active locations
+    // Auto-dismiss InfoWindow popup if the selected location is no longer present in active locations or zoomed out
     useEffect(() => {
         if (selectedLocation) {
             const isStillPresent = locations.some(loc => String(loc.id) === String(selectedLocation.id));
-            if (!isStillPresent) {
+            if (!isStillPresent || mapZoomState < 9) {
                 setSelectedLocation(null);
             }
         }
-    }, [locations, selectedLocation]);
+    }, [locations, selectedLocation, mapZoomState]);
 
     const fallbackCenter = React.useMemo(() => {
         if (locations.length > 0) {
@@ -227,22 +232,6 @@ export default function GlobalMap({
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-surface)' }}>
-            <div style={{ padding: '12px 24px', borderBottom: '1px solid var(--border-color)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#ffffff' }}>
-                <h2 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#0f172a', margin: 0 }}>Project Locations Map</h2>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                    <span style={{ fontSize: '0.85rem', color: '#64748b', fontWeight: 600 }}>
-                        {filteredLocations.length} Locations Found {polygonPath.length > 0 && '(Filtered by Boundary)'}
-                    </span>
-                    {polygonPath.length > 0 && (
-                        <button 
-                            onClick={() => { setPolygonPath([]); setDrawingMode(false); }}
-                            style={{ background: '#921214', color: '#ffffff', border: 'none', borderRadius: '16px', padding: '4px 12px', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer' }}
-                        >
-                            Clear Boundary Filter
-                        </button>
-                    )}
-                </div>
-            </div>
             <div style={{ flex: 1, position: 'relative' }}>
                 
                 {/* Custom Drawing Controls */}

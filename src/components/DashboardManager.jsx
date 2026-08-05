@@ -1,70 +1,69 @@
 import React, { useMemo } from 'react';
-import { LayoutDashboard, Landmark, ClipboardList, TrendingUp, Users, ArrowRight, ShieldCheck, MapPin } from 'lucide-react';
+import { LayoutDashboard, Landmark, Home, Building, Users, ArrowRight, ShieldCheck, MapPin, Eye, EyeOff } from 'lucide-react';
 
 export default function DashboardManager({ 
     database, 
     setAdminTab,
     showToast 
 }) {
-    const layouts = database.layouts || [];
-    const bookings = database.bookings || [];
+    const ownerListings = database.ownerListings || [];
+    const clients = database.clients || [];
 
-    // Calculate metrics
+    const COMMERCIAL_CATS = ['commercial', 'office', 'shop', 'warehouse', 'industrial', 'commercial_land', 'showroom'];
+
+    // Calculate 100% real database metrics
     const stats = useMemo(() => {
-        let totalPlots = 0;
-        let soldPlots = 0;
-        let bookedPlots = 0;
-        let availablePlots = 0;
+        const totalProperties = ownerListings.length;
+        const activeListings = ownerListings.filter(l => (l.status || 'available') === 'available').length;
+        const disabledListings = ownerListings.filter(l => l.status === 'disabled').length;
 
-        layouts.forEach(l => {
-            const plotsList = l.plots || [];
-            totalPlots += plotsList.length;
-            plotsList.forEach(p => {
-                if (p.status === 'sold') soldPlots++;
-                else if (p.status === 'booked' || p.status === 'reserved') bookedPlots++;
-                else availablePlots++;
-            });
+        const commercialCount = ownerListings.filter(l => COMMERCIAL_CATS.some(c => (l.category || '').toLowerCase().includes(c))).length;
+        const residentialCount = totalProperties - commercialCount;
+
+        // Unique property owners count across clients table and listings table
+        const ownerPhones = new Set();
+        clients.forEach(c => c.phone && ownerPhones.add(c.phone.replace(/\D/g, '').slice(-10)));
+        ownerListings.forEach(l => {
+            const p = (l.contactPhone || l.ownerPhone || '').replace(/\D/g, '').slice(-10);
+            if (p) ownerPhones.add(p);
         });
-
-        const confirmedBookings = bookings.filter(b => b.status === 'confirmed');
-        const pendingBookings = bookings.filter(b => b.status === 'pending');
-        const totalRevenue = confirmedBookings.reduce((sum, b) => sum + (Number(b.amountPaid) || 0), 0);
-
-        const occupancyRate = totalPlots > 0 ? Math.round(((soldPlots + bookedPlots) / totalPlots) * 100) : 0;
+        const totalOwnersCount = ownerPhones.size > 0 ? ownerPhones.size : clients.length;
 
         return {
-            totalLayouts: layouts.length,
-            totalPlots,
-            availablePlots,
-            soldPlots,
-            bookedPlots,
-            totalBookings: bookings.length,
-            pendingBookings: pendingBookings.length,
-            confirmedBookings: confirmedBookings.length,
-            revenue: totalRevenue,
-            occupancyRate
+            totalProperties,
+            activeListings,
+            disabledListings,
+            totalOwnersCount,
+            residentialCount,
+            commercialCount
         };
-    }, [layouts, bookings]);
+    }, [ownerListings, clients]);
 
-    // Format currency in Indian Rupees style
-    const formatCurrency = (amount) => {
-        return new Intl.NumberFormat('en-IN', {
-            style: 'currency',
-            currency: 'INR',
-            maximumFractionDigits: 0
-        }).format(amount);
+    // Format property price
+    const formatPropertyPrice = (loc) => {
+        if (!loc) return '—';
+        if (loc.category === 'bogithu' && loc.bogithuAmount) {
+            return `₹${Number(loc.bogithuAmount).toLocaleString('en-IN')} (Lease)`;
+        }
+        if (loc.rentAmount) {
+            return `₹${Number(loc.rentAmount).toLocaleString('en-IN')}/m (Rent)`;
+        }
+        if (loc.price) {
+            return `₹${Number(loc.price).toLocaleString('en-IN')}`;
+        }
+        return '—';
     };
 
-    // Get last 5 bookings
-    const recentBookings = useMemo(() => {
-        return [...bookings]
+    // Get recent 6 listings sorted by created date
+    const recentProperties = useMemo(() => {
+        return [...ownerListings]
             .sort((a, b) => {
-                const aTime = a.id.split('-')[1] || 0;
-                const bTime = b.id.split('-')[1] || 0;
-                return bTime - aTime;
+                const dateA = new Date(a.createdAt || a.created_at || 0);
+                const dateB = new Date(b.createdAt || b.created_at || 0);
+                return dateB - dateA;
             })
-            .slice(0, 5);
-    }, [bookings]);
+            .slice(0, 6);
+    }, [ownerListings]);
 
     return (
         <div className="dashboard-view" style={{ flex: 1, padding: '24px', display: 'flex', flexDirection: 'column', gap: '24px', overflowY: 'auto', background: 'var(--bg-main)' }}>
@@ -72,128 +71,136 @@ export default function DashboardManager({
             {/* Header */}
             <div>
                 <h2 style={{ fontSize: '1.4rem', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '10px' }}>
-                    <LayoutDashboard size={24} style={{ color: 'var(--primary)' }} /> Administrative Executive Dashboard
+                    <LayoutDashboard size={24} style={{ color: 'var(--primary)' }} /> Executive Real Estate Dashboard
                 </h2>
-                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Overview of Property Docs real estate layouts, booking sales performance, and recent activity.</p>
+                <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)' }}>Real-time live database overview of Property Owners, Residential & Commercial property listings.</p>
             </div>
 
-            {/* KPI Cards Grid */}
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' }}>
+            {/* KPI Cards Grid — 100% Real Database Metrics */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: '20px' }}>
                 
-                {/* Total Layouts */}
+                {/* Total Properties Listed */}
                 <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Layout Projects</span>
-                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: 'var(--primary)' }}>
-                            <MapPin size={16} />
-                        </div>
-                    </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stats.totalLayouts}</div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Active layout sheets</span>
-                </div>
-
-                {/* Total Plots */}
-                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Total Plots</span>
-                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Total Properties</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(146, 18, 20, 0.1)', color: '#921214' }}>
                             <Landmark size={16} />
                         </div>
                     </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stats.totalPlots}</div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        <strong style={{ color: '#10b981' }}>{stats.availablePlots}</strong> available / <strong style={{ color: 'var(--primary)' }}>{stats.soldPlots}</strong> sold
-                    </span>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stats.totalProperties}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Properties in Database</span>
                 </div>
 
-                {/* Bookings */}
+                {/* Active Public Listings */}
                 <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Plot Reservations</span>
-                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
-                            <ClipboardList size={16} />
-                        </div>
-                    </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stats.totalBookings}</div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>
-                        <strong style={{ color: '#f59e0b' }}>{stats.pendingBookings}</strong> pending approval
-                    </span>
-                </div>
-
-                {/* Revenue */}
-                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Confirmed Revenue</span>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Active Public Listings</span>
                         <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(16,185,129,0.1)', color: '#10b981' }}>
-                            <TrendingUp size={16} />
+                            <Eye size={16} />
                         </div>
                     </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{formatCurrency(stats.revenue)}</div>
-                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>From confirmed booking advances</span>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#10b981' }}>{stats.activeListings}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Visible to Website Customers</span>
                 </div>
 
-                {/* Occupancy Rate */}
+                {/* Disabled / Internal Listings */}
                 <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Booking Occupancy</span>
-                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(139,92,246,0.1)', color: '#8b5cf6' }}>
-                            <ShieldCheck size={16} />
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Disabled Listings</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(239,68,68,0.1)', color: '#ef4444' }}>
+                            <EyeOff size={16} />
                         </div>
                     </div>
-                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stats.occupancyRate}%</div>
-                    <div style={{ width: '100%', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden', marginTop: '4px' }}>
-                        <div style={{ width: `${stats.occupancyRate}%`, height: '100%', background: 'var(--primary)' }}></div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#ef4444' }}>{stats.disabledListings}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Hidden from Public Website</span>
+                </div>
+
+                {/* Registered Property Owners */}
+                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Property Owners</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(99,102,241,0.1)', color: '#6366f1' }}>
+                            <Users size={16} />
+                        </div>
                     </div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: 'var(--text-primary)' }}>{stats.totalOwnersCount}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Property Owner Contacts</span>
+                </div>
+
+                {/* Residential vs Commercial Split */}
+                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-secondary)' }}>Categories Breakdown</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(245,158,11,0.1)', color: '#f59e0b' }}>
+                            <Home size={16} />
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '1rem', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>
+                        🏠 {stats.residentialCount} Res • 🏢 {stats.commercialCount} Comm
+                    </div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Residential & Commercial Listings</span>
                 </div>
 
             </div>
 
-            {/* Middle Section: Layout occupancy overview & Recent bookings */}
-            <div style={{ display: 'grid', gridTemplateColumns: '1.5fr 1fr', gap: '24px' }}>
-                
-                {/* Layouts Directory table card */}
-                <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Layout Sheets Progress</h3>
-                        <button className="btn-secondary" onClick={() => setAdminTab('layouts')} style={{ fontSize: '0.75rem', padding: '6px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            View Map Editor <ArrowRight size={12} />
-                        </button>
+            {/* Middle Section: Recent Property Listings Data Table */}
+            <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <div>
+                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)', margin: 0 }}>Recent Property Listings</h3>
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Latest property listings in PostgreSQL database</span>
                     </div>
-                    
+                    <button className="btn-secondary" onClick={() => setAdminTab('clients')} style={{ fontSize: '0.78rem', padding: '8px 14px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '6px', background: '#921214', color: '#fff', border: 'none', cursor: 'pointer', fontWeight: 700 }}>
+                        Manage Property Owners & Listings <ArrowRight size={14} />
+                    </button>
+                </div>
+
+                {recentProperties.length === 0 ? (
+                    <div style={{ padding: '40px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                        No property listings recorded in database yet. Click "Property Owners Directory" to add properties.
+                    </div>
+                ) : (
                     <div style={{ overflowX: 'auto' }}>
-                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.82rem' }}>
+                        <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '0.85rem' }}>
                             <thead>
-                                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-secondary)' }}>
-                                    <th style={{ padding: '10px 8px' }}>Sheet Name</th>
-                                    <th style={{ padding: '10px 8px' }}>Location</th>
-                                    <th style={{ padding: '10px 8px' }}>Plots</th>
-                                    <th style={{ padding: '10px 8px' }}>Sold/Booked</th>
-                                    <th style={{ padding: '10px 8px' }}>Occupancy Rate</th>
+                                <tr style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-muted)', fontSize: '0.72rem', textTransform: 'uppercase', letterSpacing: '0.5px' }}>
+                                    <th style={{ padding: '12px 10px' }}>Property Title</th>
+                                    <th style={{ padding: '12px 10px' }}>Property Owner</th>
+                                    <th style={{ padding: '12px 10px' }}>Category</th>
+                                    <th style={{ padding: '12px 10px' }}>Location</th>
+                                    <th style={{ padding: '12px 10px' }}>Price / Rent</th>
+                                    <th style={{ padding: '12px 10px' }}>Public Status</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                {layouts.map(l => {
-                                    const plotsList = l.plots || [];
-                                    const total = plotsList.length;
-                                    const sold = plotsList.filter(p => p.status === 'sold').length;
-                                    const booked = plotsList.filter(p => p.status === 'booked' || p.status === 'reserved').length;
-                                    const occPct = total > 0 ? Math.round(((sold + booked) / total) * 100) : 0;
-                                    
+                                {recentProperties.map(l => {
+                                    const isComm = COMMERCIAL_CATS.some(c => (l.category || '').toLowerCase().includes(c));
+                                    const statusAvailable = (l.status || 'available') === 'available';
+
                                     return (
-                                        <tr key={l.id} style={{ borderBottom: '1px solid rgba(255,255,255,0.03)', color: 'var(--text-primary)' }}>
-                                            <td style={{ padding: '12px 8px', fontWeight: 600 }}>{l.name}</td>
-                                            <td style={{ padding: '12px 8px', color: 'var(--text-secondary)' }}>{l.area}, {l.district}</td>
-                                            <td style={{ padding: '12px 8px' }}>{total}</td>
-                                            <td style={{ padding: '12px 8px' }}>
-                                                <span style={{ color: 'var(--primary)', fontWeight: 600 }}>{sold}</span> / <span style={{ color: '#f59e0b' }}>{booked}</span>
+                                        <tr key={l.id} style={{ borderBottom: '1px solid var(--border-color)', color: 'var(--text-primary)' }}>
+                                            <td style={{ padding: '12px 10px', fontWeight: 700 }}>{l.title}</td>
+                                            <td style={{ padding: '12px 10px', color: 'var(--text-secondary)' }}>
+                                                {l.contactName || 'Owner'} ({l.contactPhone || l.ownerPhone || '—'})
                                             </td>
-                                            <td style={{ padding: '12px 8px' }}>
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                                    <div style={{ width: '60px', height: '4px', background: 'rgba(255,255,255,0.05)', borderRadius: '2px', overflow: 'hidden' }}>
-                                                        <div style={{ width: `${occPct}%`, height: '100%', background: occPct > 80 ? '#10b981' : occPct > 40 ? 'var(--primary)' : '#8b5cf6' }}></div>
-                                                    </div>
-                                                    <span>{occPct}%</span>
+                                            <td style={{ padding: '12px 10px' }}>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: isComm ? 'rgba(245,158,11,0.12)' : 'rgba(99,102,241,0.12)', color: isComm ? '#d97706' : '#6366f1' }}>
+                                                    {isComm ? '🏢 Commercial' : '🏠 Residential'} ({ (l.category || 'residential').replace('_', ' ') })
+                                                </span>
+                                            </td>
+                                            <td style={{ padding: '12px 10px', color: 'var(--text-secondary)' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
+                                                    <MapPin size={14} style={{ color: 'var(--text-muted)' }} />
+                                                    <span>{l.location || '—'}</span>
                                                 </div>
+                                            </td>
+                                            <td style={{ padding: '12px 10px', fontWeight: 800, color: '#921214' }}>
+                                                {formatPropertyPrice(l)}
+                                            </td>
+                                            <td style={{ padding: '12px 10px' }}>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: statusAvailable ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: statusAvailable ? '#22c55e' : '#ef4444' }}>
+                                                    {statusAvailable ? '● Active' : '○ Disabled'}
+                                                </span>
                                             </td>
                                         </tr>
                                     );
@@ -201,73 +208,7 @@ export default function DashboardManager({
                             </tbody>
                         </table>
                     </div>
-                </div>
-
-                {/* Recent Bookings column card */}
-                <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                        <h3 style={{ fontSize: '1rem', fontWeight: 700, color: 'var(--text-primary)' }}>Recent Reservations</h3>
-                        <button className="btn-secondary" onClick={() => setAdminTab('bookings')} style={{ fontSize: '0.75rem', padding: '6px 12px', borderRadius: 'var(--radius-sm)', display: 'flex', alignItems: 'center', gap: '4px' }}>
-                            All Bookings <ArrowRight size={12} />
-                        </button>
-                    </div>
-
-                    {recentBookings.length === 0 ? (
-                        <div style={{ flex: 1, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px', color: 'var(--text-muted)', minHeight: '160px' }}>
-                            <ClipboardList size={32} style={{ opacity: 0.2 }} />
-                            <span style={{ fontSize: '0.78rem' }}>No plot reservations logged yet.</span>
-                        </div>
-                    ) : (
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px', overflowY: 'auto', maxHeight: '320px' }}>
-                            {recentBookings.map(b => (
-                                <div key={b.id} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '10px', background: 'rgba(255,255,255,0.02)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-sm)' }}>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
-                                        <div style={{ fontSize: '0.82rem', fontWeight: 700, color: 'var(--text-primary)' }}>{b.customerName}</div>
-                                        <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Plot {b.plotId} | Phone: {b.customerPhone}</div>
-                                    </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: '4px' }}>
-                                        <span style={{ fontSize: '0.8rem', fontWeight: 700, color: 'var(--primary)' }}>{formatCurrency(b.amountPaid)}</span>
-                                        <span style={{
-                                            fontSize: '0.62rem',
-                                            fontWeight: 700,
-                                            padding: '1px 6px',
-                                            borderRadius: '10px',
-                                            textTransform: 'uppercase',
-                                            background: b.status === 'confirmed' ? 'rgba(16,185,129,0.15)' : b.status === 'cancelled' ? 'rgba(239,68,68,0.15)' : 'rgba(245,158,11,0.15)',
-                                            color: b.status === 'confirmed' ? '#10b981' : b.status === 'cancelled' ? '#ef4444' : '#f59e0b',
-                                            border: `1px solid ${b.status === 'confirmed' ? 'rgba(16,185,129,0.2)' : b.status === 'cancelled' ? 'rgba(239,68,68,0.2)' : 'rgba(245,158,11,0.2)'}`
-                                        }}>
-                                            {b.status}
-                                        </span>
-                                    </div>
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-            </div>
-
-            {/* Quick Actions Footer Panel */}
-            <div style={{ background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', padding: '20px', display: 'flex', flexDirection: 'column', gap: '14px' }}>
-                <h3 style={{ fontSize: '0.92rem', fontWeight: 700, color: 'var(--text-primary)' }}>System Quick Actions</h3>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: '12px' }}>
-                    <button className="btn-primary" onClick={() => setAdminTab('layouts')} style={{ fontSize: '0.8rem', padding: '10px 16px', borderRadius: 'var(--radius-sm)' }}>
-                        Open Visual Map Workspace
-                    </button>
-                    <button className="btn-secondary" onClick={() => setAdminTab('plots')} style={{ fontSize: '0.8rem', padding: '10px 16px', borderRadius: 'var(--radius-sm)' }}>
-                        Inspect Plot Database
-                    </button>
-                    <button className="btn-secondary" onClick={() => setAdminTab('bookings')} style={{ fontSize: '0.8rem', padding: '10px 16px', borderRadius: 'var(--radius-sm)' }}>
-                        Pending Reservations Queue
-                    </button>
-                    <button className="btn-secondary" onClick={() => setAdminTab('videos')} style={{ fontSize: '0.8rem', padding: '10px 16px', borderRadius: 'var(--radius-sm)' }}>
-                        Manage Promotional Playlist
-                    </button>
-                    <button className="btn-secondary" onClick={() => setAdminTab('settings')} style={{ fontSize: '0.8rem', padding: '10px 16px', borderRadius: 'var(--radius-sm)' }}>
-                        Global Admin Settings
-                    </button>
-                </div>
+                )}
             </div>
 
         </div>

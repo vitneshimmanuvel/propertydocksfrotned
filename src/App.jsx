@@ -65,123 +65,20 @@ export default function App() {
 
     useEffect(() => {
         const loadDatabase = async () => {
+            // Clean up legacy offline cache keys from browser localStorage
+            try {
+                localStorage.removeItem("aerostage_multilayouts_database");
+                localStorage.removeItem("aerostage_map_database");
+                localStorage.removeItem("property_docs_db");
+            } catch (e) {}
+
             try {
                 const data = await fetchDatabase();
-                
-                // One-time migration
-                const savedDb = localStorage.getItem("aerostage_multilayouts_database");
-                const savedLegacy = localStorage.getItem("aerostage_map_database");
-
-                if ((!data.layouts || data.layouts.length === 0) && (savedDb || savedLegacy)) {
-                    showToast("Migrating offline data to cloud database...", "info");
-                    let migratedData = null;
-
-                    if (savedDb) {
-                        try {
-                            migratedData = JSON.parse(savedDb);
-                        } catch (e) {
-                            console.error("Migration parse error", e);
-                        }
-                    }
-
-                    if (!migratedData && savedLegacy) {
-                        try {
-                            const legacyLayoutData = JSON.parse(savedLegacy);
-                            migratedData = {
-                                activeLayoutId: "default",
-                                layouts: [
-                                    {
-                                        id: "default",
-                                        name: "Property Docs Layout Sheet",
-                                        state: "Tamil Nadu",
-                                        district: "Erode",
-                                        area: "Vijayamangalam",
-                                        ...legacyLayoutData
-                                    }
-                                ],
-                                bookings: [],
-                                videos: DEFAULT_PROMO_VIDEOS,
-                                settings: DEFAULT_SETTINGS
-                            };
-                        } catch (e) {
-                            console.error("Legacy migration parse error", e);
-                        }
-                    }
-
-                    if (migratedData) {
-                        migratedData.layouts = (migratedData.layouts || []).map(l => ({
-                            ...l,
-                            state: l.state || "Tamil Nadu",
-                            district: l.district || "Erode",
-                            area: l.area || "Vijayamangalam"
-                        }));
-                        migratedData.bookings = migratedData.bookings || [];
-                        migratedData.videos = migratedData.videos || DEFAULT_PROMO_VIDEOS;
-                        migratedData.settings = migratedData.settings || DEFAULT_SETTINGS;
-
-                        await saveFullDatabase(migratedData);
-                        setDatabase(migratedData);
-                        showToast("Offline data successfully migrated to PostgreSQL!", "success");
-                    } else {
-                        const defaultDb = {
-                            activeLayoutId: "default",
-                            layouts: [
-                                {
-                                    id: "default",
-                                    name: "Property Docs Layout Sheet",
-                                    state: "Tamil Nadu",
-                                    district: "Erode",
-                                    area: "Vijayamangalam",
-                                    ...INITIAL_MAP_DATA
-                                }
-                            ],
-                            bookings: [],
-                            videos: DEFAULT_PROMO_VIDEOS,
-                            settings: DEFAULT_SETTINGS
-                        };
-                        await saveFullDatabase(defaultDb);
-                        setDatabase(defaultDb);
-                    }
-                } else if (!data.layouts || data.layouts.length === 0) {
-                    const defaultDb = {
-                        activeLayoutId: "default",
-                        layouts: [
-                            {
-                                id: "default",
-                                name: "Property Docs Layout Sheet",
-                                state: "Tamil Nadu",
-                                district: "Erode",
-                                area: "Vijayamangalam",
-                                ...INITIAL_MAP_DATA
-                            }
-                        ],
-                        bookings: [],
-                        videos: DEFAULT_PROMO_VIDEOS,
-                        settings: DEFAULT_SETTINGS
-                    };
-                    await saveFullDatabase(defaultDb);
-                    setDatabase(defaultDb);
-                } else {
-                    const savedActiveId = localStorage.getItem("property_docs_active_layout_id");
-                    if (savedActiveId && data.layouts.some(l => l.id === savedActiveId)) {
-                        setDatabase({
-                            ...data,
-                            activeLayoutId: savedActiveId
-                        });
-                    } else {
-                        setDatabase(data);
-                    }
-                }
+                setDatabase(data || { ownerListings: [], clients: [], layouts: [], bookings: [] });
             } catch (err) {
                 console.error("Failed to fetch database from server", err);
-                showToast("Connection failed. Using offline cache.", "error");
-                
-                const savedDb = localStorage.getItem("aerostage_multilayouts_database");
-                if (savedDb) {
-                    try {
-                        setDatabase(JSON.parse(savedDb));
-                    } catch (e) {}
-                }
+                showToast("Connection failed to server.", "error");
+                setDatabase({ ownerListings: [], clients: [], layouts: [], bookings: [] });
             } finally {
                 setIsLoading(false);
             }
@@ -1214,6 +1111,36 @@ export default function App() {
                                 <Users size={18} />
                                 {!navCollapsed && <span>Clients</span>}
                             </button>
+
+                            <button 
+                                className={`nav-item ${adminTab === 'inquiries' ? 'active' : ''}`} 
+                                onClick={() => setAdminTab('inquiries')}
+                                title={navCollapsed ? "Inquiries" : undefined}
+                                style={navCollapsed ? { padding: '12px 0', justifyContent: 'center', gap: 0 } : {}}
+                            >
+                                <MessageSquare size={18} />
+                                {!navCollapsed && (
+                                    <span style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                                        Inquiries
+                                        {(() => {
+                                            const seen = new Set();
+                                            const uniqueOpen = (database.inquiries || []).filter(i => {
+                                                if (i.sharedToClient) return false;
+                                                const phone = (i.userPhone || '').replace(/\D/g, '').slice(-10);
+                                                const key = `${i.listingId || i.listingTitle}_${phone}`;
+                                                if (seen.has(key)) return false;
+                                                seen.add(key);
+                                                return true;
+                                            });
+                                            return uniqueOpen.length > 0 ? (
+                                                <span style={{ background: '#ef4444', color: '#fff', fontSize: '0.7rem', fontWeight: 800, borderRadius: '10px', padding: '1px 6px' }}>
+                                                    {uniqueOpen.length}
+                                                </span>
+                                            ) : null;
+                                        })()}
+                                    </span>
+                                )}
+                            </button>
                             
                             <button 
                                 className={`nav-item ${adminTab === 'reports' ? 'active' : ''}`} 
@@ -1223,16 +1150,6 @@ export default function App() {
                             >
                                 <BarChart3 size={18} />
                                 {!navCollapsed && <span>Reports</span>}
-                            </button>
-                            
-                            <button 
-                                className={`nav-item ${adminTab === 'settings' ? 'active' : ''}`} 
-                                onClick={() => setAdminTab('settings')}
-                                title={navCollapsed ? "Settings" : undefined}
-                                style={navCollapsed ? { padding: '12px 0', justifyContent: 'center', gap: 0 } : {}}
-                            >
-                                <Settings size={18} />
-                                {!navCollapsed && <span>Settings</span>}
                             </button>
                             
                             <button 
@@ -1301,15 +1218,15 @@ export default function App() {
                             setDatabase={setDatabase}
                             showToast={showToast}
                         />
+                    ) : adminTab === 'inquiries' ? (
+                        <InquiriesManager 
+                            database={database}
+                            setDatabase={setDatabase}
+                            showToast={showToast}
+                        />
                     ) : adminTab === 'reports' ? (
                         <ReportsManager 
                             database={database}
-                            showToast={showToast}
-                        />
-                    ) : adminTab === 'settings' ? (
-                        <AdminSettings 
-                            database={database}
-                            setDatabase={setDatabase}
                             showToast={showToast}
                         />
                     ) : adminTab === 'globalmap' ? (
