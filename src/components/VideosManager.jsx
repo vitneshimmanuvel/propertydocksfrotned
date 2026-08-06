@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Video, Plus, Edit2, Trash2, Play, Pause, ChevronUp, ChevronDown, PlusCircle, Link, X, Upload } from 'lucide-react';
 import { uploadVideo } from '../utils/api';
+import UniversalVideoPlayer from './UniversalVideoPlayer';
 
 export default function VideosManager({ 
     database, 
@@ -403,8 +404,8 @@ export default function VideosManager({
                         >
                             <X size={18} /> Close Preview
                         </button>
-                        <video 
-                            src={previewVideoUrl}
+                        <UniversalVideoPlayer 
+                            url={previewVideoUrl}
                             controls
                             autoPlay
                             style={{ width: '100%', height: '100%', objectFit: 'contain', background: '#000000', borderRadius: 'var(--radius-md)' }}

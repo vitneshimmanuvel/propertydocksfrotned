@@ -1031,7 +1031,7 @@ export default function App() {
                                 <input 
                                     type="text" 
                                     name="username" 
-                                    defaultValue="admin" 
+                                    defaultValue="" 
                                     placeholder="Enter username" 
                                     required 
                                     style={{ width: '100%', padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }}
@@ -1043,16 +1043,11 @@ export default function App() {
                                 <input 
                                     type="password" 
                                     name="password" 
-                                    defaultValue="admin123" 
+                                    defaultValue="" 
                                     placeholder="Enter password" 
                                     required 
                                     style={{ width: '100%', padding: '12px 14px', border: '1px solid #cbd5e1', borderRadius: '8px', fontSize: '0.95rem', outline: 'none', background: '#f8fafc' }}
                                 />
-                            </div>
-
-                            <div style={{ background: '#f1f5f9', padding: '10px 12px', borderRadius: '6px', fontSize: '0.8rem', color: '#475569', border: '1px solid #e2e8f0' }}>
-                                🔑 <strong>Admin Credentials:</strong><br />
-                                Username: <code style={{ color: '#921214', fontWeight: 700 }}>admin</code> | Password: <code style={{ color: '#921214', fontWeight: 700 }}>admin123</code>
                             </div>
 
                             <button type="submit" style={{ width: '100%', padding: '14px', background: '#921214', color: '#ffffff', border: 'none', borderRadius: '8px', fontWeight: 800, fontSize: '1rem', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', marginTop: '6px', boxShadow: '0 4px 12px rgba(146, 18, 20, 0.3)' }}>

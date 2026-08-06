@@ -18,6 +18,7 @@ import {
     Maximize2,
     Eye
 } from 'lucide-react';
+import UniversalVideoPlayer from './UniversalVideoPlayer';
 
 export default function PropertyDetailModal({ listing, isOpen, onClose, onToggleFavorite, isFavorite, onRequestShowing }) {
     if (!isOpen || !listing) return null;
@@ -40,8 +41,16 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
     const [mediaList, setMediaList] = useState(initialMedia);
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [activeMediaIndex, setActiveMediaIndex] = useState(0);
-    const [uploadInputUrl, setUploadInputUrl] = useState('');
-    const [showUploadInput, setShowUploadInput] = useState(false);
+
+    // Sync mediaList whenever listing prop changes
+    React.useEffect(() => {
+        const media = (listing && listing.media && listing.media.length > 0)
+            ? listing.media
+            : (listing && listing.galleryImages && listing.galleryImages.length > 0
+                ? listing.galleryImages.map(img => ({ type: 'image', url: img }))
+                : defaultFallbackImages.map(img => ({ type: 'image', url: img })));
+        setMediaList(media);
+    }, [listing]);
 
     const openLightbox = (index) => {
         setActiveMediaIndex(index);
@@ -56,15 +65,6 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
     const handleNextMedia = (e) => {
         e && e.stopPropagation();
         setActiveMediaIndex(prev => (prev < mediaList.length - 1 ? prev + 1 : 0));
-    };
-
-    const handleAddCustomMedia = () => {
-        if (!uploadInputUrl.trim()) return;
-        const isVid = uploadInputUrl.toLowerCase().includes('.mp4') || uploadInputUrl.toLowerCase().includes('video');
-        const newMedia = { type: isVid ? 'video' : 'image', url: uploadInputUrl.trim() };
-        setMediaList(prev => [...prev, newMedia]);
-        setUploadInputUrl('');
-        setShowUploadInput(false);
     };
 
     const displayPrice = listing.isOwnerListing 
@@ -85,13 +85,6 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <button 
-                            className="btn-realtor-filter" 
-                            style={{ padding: '6px 12px', fontSize: '0.82rem', borderRadius: '20px' }}
-                            onClick={() => setShowUploadInput(!showUploadInput)}
-                        >
-                            <Upload size={14} /> Add Photo / Video
-                        </button>
                         <button className="btn-realtor-filter" style={{ padding: '6px 12px', fontSize: '0.82rem', borderRadius: '20px' }}>
                             <Compass size={14} /> Directions
                         </button>
@@ -107,27 +100,6 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                     </div>
                 </div>
 
-                {/* Upload Input Bar (collapsible) */}
-                {showUploadInput && (
-                    <div style={{ background: '#f8fafc', borderBottom: '1px solid #e2e8f0', padding: '12px 24px', display: 'flex', gap: '12px', alignItems: 'center' }}>
-                        <input 
-                            type="text" 
-                            className="realtor-input" 
-                            placeholder="Paste photo URL or video link (mp4)..." 
-                            value={uploadInputUrl}
-                            onChange={(e) => setUploadInputUrl(e.target.value)}
-                            style={{ flex: 1, padding: '8px 14px', fontSize: '0.85rem', borderRadius: '6px' }}
-                        />
-                        <button 
-                            className="btn-realtor-search" 
-                            style={{ padding: '8px 20px', borderRadius: '6px', fontSize: '0.85rem' }}
-                            onClick={handleAddCustomMedia}
-                        >
-                            Upload Media
-                        </button>
-                    </div>
-                )}
-
                 <div style={{ padding: '24px' }}>
                     {/* Header Address Title */}
                     <h1 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
@@ -136,30 +108,29 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
 
                     {/* 5-Photo Gallery Grid matching user's screenshot */}
                     <div className="realtor-gallery-grid">
-                        <div className="realtor-gallery-main" onClick={() => openLightbox(0)} style={{ cursor: 'pointer' }}>
-                            {mediaList[0] && mediaList[0].type === 'video' ? (
-                                <video src={mediaList[0].url} controls style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        <div className="realtor-gallery-main" style={{ cursor: 'pointer', position: 'relative' }}>
+                            {mediaList[0] && (typeof mediaList[0] === 'object' && mediaList[0].type === 'video' || (typeof mediaList[0] === 'string' && (mediaList[0].includes('.mp4') || mediaList[0].includes('youtube') || mediaList[0].includes('youtu.be')))) ? (
+                                <UniversalVideoPlayer url={typeof mediaList[0] === 'string' ? mediaList[0] : mediaList[0].url} autoPlay={false} controls={true} style={{ borderRadius: '0' }} />
                             ) : (
-                                <img src={mediaList[0] ? mediaList[0].url || mediaList[0] : defaultFallbackImages[0]} alt={listing.name} />
+                                <img src={mediaList[0] ? (typeof mediaList[0] === 'string' ? mediaList[0] : mediaList[0].url) : defaultFallbackImages[0]} alt={listing.name} onClick={() => openLightbox(0)} />
                             )}
                         </div>
 
                         {mediaList.slice(1, 5).map((item, idx) => {
                             const mediaUrl = typeof item === 'string' ? item : item.url;
-                            const isVid = typeof item === 'object' && item.type === 'video';
+                            const isVid = (typeof item === 'object' && item.type === 'video') || (typeof item === 'string' && (item.includes('.mp4') || item.includes('youtube') || item.includes('youtu.be')));
                             return (
                                 <div 
                                     key={idx} 
                                     className="realtor-gallery-item" 
-                                    style={{ position: 'relative', cursor: 'pointer' }}
-                                    onClick={() => openLightbox(idx + 1)}
+                                    style={{ position: 'relative', cursor: 'pointer', overflow: 'hidden' }}
                                 >
                                     {isVid ? (
-                                        <div style={{ width: '100%', height: '100%', background: '#000', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                                            <Video size={28} color="#fff" />
+                                        <div style={{ width: '100%', height: '100%', background: '#0f172a', position: 'relative' }}>
+                                            <UniversalVideoPlayer url={mediaUrl} autoPlay={false} controls={true} style={{ width: '100%', height: '100%', borderRadius: '0' }} />
                                         </div>
                                     ) : (
-                                        <img src={mediaUrl} alt={`Gallery ${idx + 1}`} />
+                                        <img src={mediaUrl} alt={`Gallery ${idx + 1}`} onClick={() => openLightbox(idx + 1)} />
                                     )}
 
                                     {idx === 3 && (
@@ -304,14 +275,16 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                         </button>
 
                         {/* Stage Content */}
-                        <div style={{ maxWidth: '90%', maxHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                            {mediaList[activeMediaIndex] && typeof mediaList[activeMediaIndex] === 'object' && mediaList[activeMediaIndex].type === 'video' ? (
-                                <video 
-                                    src={mediaList[activeMediaIndex].url} 
-                                    controls 
-                                    autoPlay 
-                                    style={{ maxWidth: '100%', maxHeight: '75vh', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
-                                />
+                        <div style={{ width: '90%', maxWidth: '960px', maxHeight: '80vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                            {mediaList[activeMediaIndex] && ((typeof mediaList[activeMediaIndex] === 'object' && mediaList[activeMediaIndex].type === 'video') || (typeof mediaList[activeMediaIndex] === 'string' && (mediaList[activeMediaIndex].includes('.mp4') || mediaList[activeMediaIndex].includes('youtube') || mediaList[activeMediaIndex].includes('youtu.be')))) ? (
+                                <div style={{ width: '100%', minHeight: '400px', maxHeight: '75vh' }}>
+                                    <UniversalVideoPlayer 
+                                        url={typeof mediaList[activeMediaIndex] === 'string' ? mediaList[activeMediaIndex] : mediaList[activeMediaIndex].url} 
+                                        controls 
+                                        autoPlay 
+                                        style={{ width: '100%', height: '100%', borderRadius: '8px', boxShadow: '0 10px 30px rgba(0,0,0,0.5)' }} 
+                                    />
+                                </div>
                             ) : (
                                 <img 
                                     src={typeof mediaList[activeMediaIndex] === 'string' ? mediaList[activeMediaIndex] : mediaList[activeMediaIndex]?.url || defaultFallbackImages[0]} 

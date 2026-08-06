@@ -292,7 +292,7 @@ export default function InquiriesManager({ database, setDatabase, showToast }) {
                                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px', background: 'var(--bg-main)', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.82rem' }}>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                                         <Building2 size={16} color="#921214" />
-                                        <span><strong>Target Property:</strong> <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{inq.enrichedPropertyTitle}</span> {inq.enrichedPropertyPrice && <span style={{ color: '#921214', fontWeight: 800 }}>({inq.enrichedPropertyPrice})</span>}</span>
+                                        <span><strong>Target Property:</strong> <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{inq.enrichedPropertyTitle}</span></span>
                                     </div>
 
                                     <button 

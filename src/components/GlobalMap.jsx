@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { GoogleMap, useJsApiLoader, Marker, InfoWindow, Polygon, Polyline } from '@react-google-maps/api';
+import UniversalVideoPlayer from './UniversalVideoPlayer';
 
 const containerStyle = {
   width: '100%',
@@ -382,9 +383,9 @@ export default function GlobalMap({
                                         <>
                                             {/* Media Showcase Banner */}
                                             <div style={{ width: '100%', height: '140px', position: 'relative', background: '#0f172a' }}>
-                                                {currentMedia && currentMedia.type === 'video' ? (
-                                                    <video 
-                                                        src={currentMedia.url} 
+                                                {currentMedia && (currentMedia.type === 'video' || (currentMedia.url && (currentMedia.url.includes('.mp4') || currentMedia.url.includes('youtube') || currentMedia.url.includes('youtu.be')))) ? (
+                                                    <UniversalVideoPlayer 
+                                                        url={currentMedia.url} 
                                                         controls 
                                                         autoPlay 
                                                         muted 
