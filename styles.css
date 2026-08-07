@@ -3314,3 +3314,347 @@ header {
     background-color: #334155 !important;
 }
 
+/* =============================================================
+   MOBILE RESPONSIVENESS OVERRIDES & FLEX/GRID BREAKPOINTS
+   ============================================================= */
+
+@media (max-width: 1024px) {
+    .realtor-search-bar-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    .realtor-gallery-grid {
+        grid-template-columns: 1fr 1fr;
+        grid-template-rows: auto;
+    }
+    .realtor-gallery-main {
+        grid-column: 1 / -1;
+        height: 260px;
+    }
+}
+
+@media (max-width: 768px) {
+    /* General touch targets & body overflow reset */
+    html, body {
+        overflow-x: hidden !important;
+        touch-action: manipulation;
+    }
+
+    /* Realtor Header & Subnav Mobile Styles */
+    .realtor-header {
+        display: none !important;
+    }
+
+    .realtor-top-actions {
+        gap: 8px !important;
+        font-size: 0.78rem !important;
+    }
+
+    .realtor-top-action-btn span {
+        display: none !important;
+    }
+
+    .realtor-subnav {
+        padding: 0 10px !important;
+        height: 46px !important;
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    .realtor-subnav-links {
+        gap: 12px !important;
+        white-space: nowrap !important;
+    }
+
+    /* Realtor Hero Section & Search Bar */
+    .realtor-hero {
+        padding: 32px 14px !important;
+        min-height: auto !important;
+    }
+
+    .realtor-hero-title {
+        font-size: 1.35rem !important;
+        line-height: 1.35 !important;
+        text-align: center !important;
+        margin-bottom: 20px !important;
+    }
+
+    .realtor-hero-search-box {
+        padding: 16px 12px !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        border-radius: 16px !important;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.18) !important;
+    }
+
+    .realtor-hero-search-tabs {
+        flex-wrap: wrap !important;
+        justify-content: center !important;
+        gap: 6px !important;
+        margin-bottom: 12px !important;
+    }
+
+    .realtor-hero-search-input-row {
+        padding: 2px 2px 2px 12px !important;
+        border-radius: 26px !important;
+    }
+
+    .realtor-hero-search-input {
+        font-size: 0.88rem !important;
+        padding: 10px 4px !important;
+    }
+
+    .realtor-hero-search-btn-green {
+        width: 42px !important;
+        height: 42px !important;
+    }
+
+    /* Search Bar Grid in Search View */
+    .realtor-search-bar-wrapper {
+        padding: 12px !important;
+    }
+
+    .realtor-search-bar-grid {
+        grid-template-columns: 1fr !important;
+        gap: 10px !important;
+    }
+
+    .realtor-input, .realtor-select, .btn-realtor-search, .btn-realtor-filter {
+        width: 100% !important;
+        min-height: 44px !important;
+        font-size: 0.9rem !important;
+    }
+
+    /* Property Grid 1-Column Stacking */
+    .realtor-property-grid {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+        padding: 12px !important;
+    }
+
+    .realtor-listing-card {
+        width: 100% !important;
+        margin-bottom: 16px !important;
+    }
+
+    .realtor-listing-card-img {
+        height: 190px !important;
+    }
+
+    /* Detail Modal Mobile Stack */
+    .realtor-detail-modal-overlay {
+        padding: 0 !important;
+        align-items: flex-end !important;
+    }
+
+    .realtor-detail-modal-content {
+        max-width: 100% !important;
+        max-height: 94vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        padding: 16px !important;
+    }
+
+    .realtor-detail-modal-content > div {
+        padding: 10px 0 !important;
+    }
+
+    .realtor-gallery-grid {
+        grid-template-columns: 1fr !important;
+        grid-template-rows: auto !important;
+        height: auto !important;
+        gap: 8px !important;
+    }
+
+    .realtor-gallery-main {
+        grid-column: 1 / -1 !important;
+        height: 210px !important;
+        border-radius: 8px !important;
+    }
+
+    .realtor-gallery-item {
+        height: 130px !important;
+        border-radius: 8px !important;
+    }
+
+    /* 2-Column Detail split stacked to 1-Column */
+    .realtor-detail-modal-content div[style*="gridTemplateColumns"] {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    /* Realtor CTA Banner Mobile */
+    .realtor-cta-banner {
+        flex-direction: column !important;
+        text-align: center !important;
+        gap: 12px !important;
+        padding: 16px 16px !important;
+    }
+
+    /* Floating map drawers and search boxes */
+    .realtor-map-popup {
+        width: 250px !important;
+    }
+
+    .realtor-popup-img-wrap {
+        height: 125px !important;
+    }
+
+    /* Admin CRM Sidebar & Navigation */
+    div[style*="display: flex"][style*="width: 100%"][style*="height: 100%"] {
+        flex-direction: column !important;
+        overflow-y: auto !important;
+    }
+
+    .nav-sidebar {
+        width: 100% !important;
+        border-right: none !important;
+        border-bottom: 1px solid var(--border-color) !important;
+    }
+
+    .nav-links {
+        flex-direction: row !important;
+        overflow-x: auto !important;
+        white-space: nowrap !important;
+        padding: 8px !important;
+        -webkit-overflow-scrolling: touch !important;
+    }
+
+    .nav-item {
+        font-size: 0.82rem !important;
+        padding: 8px 14px !important;
+    }
+
+    /* Admin forms & grids */
+    form[style*="gridTemplateColumns"] {
+        grid-template-columns: 1fr !important;
+        gap: 16px !important;
+    }
+
+    /* Data Table responsive wrapper */
+    .table-container, div[style*="overflowX: 'auto'"] {
+        overflow-x: auto !important;
+        -webkit-overflow-scrolling: touch !important;
+        width: 100% !important;
+    }
+}
+
+@media (max-width: 480px) {
+    .realtor-logo-text {
+        font-size: 1rem !important;
+    }
+
+    .realtor-type-tab {
+        padding: 6px 10px !important;
+        font-size: 0.78rem !important;
+    }
+
+    .btn-realtor-search, .btn-realtor-filter {
+        width: 100% !important;
+        justify-content: center !important;
+    }
+
+    .realtor-search-bar-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    /* Inquiries cards stack */
+    div[style*="padding: '16px'"][style*="border: '1px solid var(--border-color)'"] {
+        padding: 12px !important;
+    }
+
+    .kpi-grid-row {
+        grid-template-columns: 1fr !important;
+        gap: 12px !important;
+    }
+}
+
+@media (max-width: 768px) {
+    .realtor-search-bar-wrapper {
+        padding: 6px 10px !important;
+        background: #ffffff !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+    }
+
+    .realtor-input {
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 8px !important;
+        background: #ffffff !important;
+        font-size: 0.85rem !important;
+        height: 38px !important;
+        padding: 0 10px !important;
+        box-sizing: border-box !important;
+    }
+
+    .realtor-select {
+        border: 1px solid #cbd5e1 !important;
+        border-radius: 6px !important;
+        background: #ffffff !important;
+        font-size: 0.82rem !important;
+        height: 36px !important;
+        padding: 0 8px !important;
+        box-sizing: border-box !important;
+    }
+
+    /* Property Detail Modal Mobile Fit */
+    .realtor-detail-modal-overlay {
+        padding: 0 !important;
+        align-items: flex-end !important;
+    }
+
+    .realtor-detail-modal-content {
+        width: 100% !important;
+        max-width: 100% !important;
+        max-height: 92vh !important;
+        border-radius: 20px 20px 0 0 !important;
+        padding: 0 !important;
+        overflow-y: auto !important;
+        box-sizing: border-box !important;
+    }
+
+    .realtor-modal-header {
+        padding: 10px 14px !important;
+        font-size: 0.75rem !important;
+    }
+
+    .realtor-modal-body {
+        padding: 14px !important;
+        box-sizing: border-box !important;
+        width: 100% !important;
+    }
+
+    .realtor-detail-title {
+        font-size: 1.25rem !important;
+        margin-bottom: 10px !important;
+        word-break: break-word !important;
+    }
+
+    .realtor-detail-price {
+        font-size: 1.75rem !important;
+    }
+
+    .realtor-detail-split-container {
+        display: flex !important;
+        flex-direction: column !important;
+        gap: 20px !important;
+        margin-top: 16px !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .realtor-legal-highlights-grid {
+        grid-template-columns: 1fr !important;
+        gap: 8px !important;
+    }
+
+    .realtor-metrics-row {
+        gap: 12px !important;
+        padding: 12px 0 !important;
+    }
+}
+
+
+
+
+
+
+

@@ -4,7 +4,7 @@ import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { saveFullDatabase, uploadImage, uploadVideo } from '../utils/api';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyDU7d-rl_p88O4tel70xd5UKPA3x8n5foU";
-const mapLibraries = ['places', 'drawing', 'geometry'];
+const mapLibraries = ['drawing', 'geometry'];
 
 export default function ClientsManager({ 
     database,

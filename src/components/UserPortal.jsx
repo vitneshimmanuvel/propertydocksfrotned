@@ -30,20 +30,21 @@ import {
     Heart,
     Globe,
     Users,
-    FileText
+    FileText,
+    MoreHorizontal
 } from 'lucide-react';
 import Header from './Header';
 import MapWorkspace from './MapWorkspace';
 import GlobalMap from './GlobalMap';
 import AdvancedFilterModal from './AdvancedFilterModal';
 import PropertyDetailModal from './PropertyDetailModal';
-import { useJsApiLoader, StandaloneSearchBox } from '@react-google-maps/api';
+import { useJsApiLoader } from '@react-google-maps/api';
 import { saveFullDatabase } from '../utils/api';
 import { auth } from '../utils/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyDU7d-rl_p88O4tel70xd5UKPA3x8n5foU";
-const libraries = ['places', 'drawing', 'geometry'];
+const libraries = ['drawing', 'geometry'];
 
 export default function UserPortal({ 
     database, 
@@ -74,8 +75,23 @@ export default function UserPortal({
     const [inqCountryCodeVal, setInqCountryCodeVal] = useState('+91');
     const [inqPhoneVal, setInqPhoneVal] = useState('');
     const [inqEmailVal, setInqEmailVal] = useState('');
-    const [isDirectoryOpen, setIsDirectoryOpen] = useState(true);
+    const [isDirectoryOpen, setIsDirectoryOpen] = useState(typeof window !== 'undefined' ? window.innerWidth > 768 : true);
+    const [isMobileView, setIsMobileView] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
+    const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const [expandedDistricts, setExpandedDistricts] = useState({});
+
+    useEffect(() => {
+        const handleMobileCheck = () => {
+            const mobile = window.innerWidth <= 768;
+            setIsMobileView(mobile);
+            if (mobile) {
+                setIsDirectoryOpen(false);
+            }
+        };
+        handleMobileCheck();
+        window.addEventListener('resize', handleMobileCheck);
+        return () => window.removeEventListener('resize', handleMobileCheck);
+    }, []);
 
     const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
     const [selectedDetailListing, setSelectedDetailListing] = useState(null);
@@ -160,17 +176,7 @@ export default function UserPortal({
     };
 
     const geocodeAddress = async (address, layout) => {
-        try {
-            const response = await fetch(`https://maps.googleapis.com/maps/api/geocode/json?address=${encodeURIComponent(address)}&key=${GOOGLE_MAPS_API_KEY}`);
-            const data = await response.json();
-            if (data.results && data.results.length > 0) {
-                const { lat, lng } = data.results[0].geometry.location;
-                return { ...layout, lat, lng };
-            }
-            return null;
-        } catch (error) {
-            return null;
-        }
+        return null;
     };
 
     const getFallbackCoords = (locationStr, idSeed = 0) => {
@@ -991,32 +997,8 @@ export default function UserPortal({
 
                                 {/* Search Input Row */}
                                 <div className="realtor-hero-search-input-row" style={{ display: 'flex', alignItems: 'center', width: '100%', position: 'relative' }}>
-                                    {isLoaded ? (
-                                        <div style={{ flex: 1, display: 'flex', width: '100%' }}>
-                                            <StandaloneSearchBox
-                                                onLoad={onSearchBoxLoad}
-                                                onPlacesChanged={() => {
-                                                    onPlacesChanged();
-                                                    setActiveTab('search');
-                                                }}
-                                            >
-                                                <input
-                                                    type="text"
-                                                    className="realtor-hero-search-input"
-                                                    placeholder="City, District, Area, Address or MLS number"
-                                                    value={userSearchText}
-                                                    onChange={(e) => {
-                                                        setUserSearchText(e.target.value);
-                                                    }}
-                                                    onKeyDown={(e) => {
-                                                        if (e.key === 'Enter') handleHeroSearch();
-                                                    }}
-                                                    style={{ width: '100%', flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '12px 18px', fontSize: '0.95rem' }}
-                                                />
-                                            </StandaloneSearchBox>
-                                        </div>
-                                    ) : (
-                                        <input 
+                                    <div style={{ flex: 1, display: 'flex', width: '100%' }}>
+                                        <input
                                             type="text"
                                             className="realtor-hero-search-input"
                                             placeholder="City, District, Area, Address or MLS number"
@@ -1029,7 +1011,7 @@ export default function UserPortal({
                                             }}
                                             style={{ width: '100%', flex: 1, border: 'none', outline: 'none', background: 'transparent', padding: '12px 18px', fontSize: '0.95rem' }}
                                         />
-                                    )}
+                                    </div>
                                     <button 
                                         className="realtor-hero-search-btn-green"
                                         onClick={handleHeroSearch}
@@ -1253,176 +1235,344 @@ export default function UserPortal({
                         
                         {/* Search Bar */}
                         <div className="realtor-search-bar-wrapper">
-                            <div className="realtor-search-bar-grid">
-                                {isLoaded ? (
-                                    <StandaloneSearchBox onLoad={onSearchBoxLoad} onPlacesChanged={onPlacesChanged}>
-                                        <div style={{ position: 'relative', width: '100%', flex: 1, minWidth: '220px' }}>
-                                            <input type="text" className="realtor-input" placeholder="City, Neighbourhood, Address or MLS® number" value={userSearchText} onChange={(e) => setUserSearchText(e.target.value)} />
-                                            {userSearchText && (<X size={16} onClick={clearSearch} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', cursor: 'pointer' }} />)}
+                            {isMobileView ? (
+                                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', width: '100%' }}>
+                                    {/* Top row: Input + Search Red Button + 3-Dot Filter Toggle */}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '6px', width: '100%' }}>
+                                        <div style={{ position: 'relative', flex: 1 }}>
+                                            <input 
+                                                type="text" 
+                                                className="realtor-input" 
+                                                placeholder="City, Area, Address or MLS number" 
+                                                value={userSearchText} 
+                                                onChange={(e) => setUserSearchText(e.target.value)} 
+                                                style={{ border: '1px solid #cbd5e1', borderRadius: '8px', padding: '8px 12px', fontSize: '0.85rem', width: '100%', background: '#fff' }}
+                                            />
+                                            {userSearchText && (<X size={16} onClick={clearSearch} style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', cursor: 'pointer' }} />)}
                                         </div>
-                                    </StandaloneSearchBox>
-                                ) : (
-                                    <input type="text" className="realtor-input" placeholder="City, Neighbourhood, Address or MLS® number" value={userSearchText} onChange={(e) => setUserSearchText(e.target.value)} />
-                                )}
+                                        <button 
+                                            className="btn-realtor-search" 
+                                            onClick={() => showToast(`Searching for ${userSearchText || 'all listings'}...`, "info")}
+                                            style={{ padding: '0 12px', borderRadius: '8px', height: '38px', background: '#921214', color: '#fff', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                                        >
+                                            <Search size={16} />
+                                        </button>
+                                        <button 
+                                            onClick={() => setIsMobileFiltersOpen(!isMobileFiltersOpen)} 
+                                            style={{ 
+                                                background: isMobileFiltersOpen ? '#921214' : '#f1f5f9', 
+                                                color: isMobileFiltersOpen ? '#ffffff' : '#0f172a', 
+                                                border: '1px solid #cbd5e1', 
+                                                borderRadius: '8px', 
+                                                padding: '0 10px', 
+                                                height: '38px',
+                                                cursor: 'pointer', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '2px',
+                                                fontWeight: 800,
+                                                fontSize: '0.85rem'
+                                            }}
+                                            title="More Filters"
+                                        >
+                                            <MoreHorizontal size={18} />
+                                        </button>
+                                    </div>
 
-                                <select className="realtor-select" value={advancedFilters.transactionType} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, transactionType: e.target.value }))}>
-                                    <option value="all">All Properties</option>
-                                    <option value="for_sale">For Sale</option>
-                                    <option value="for_rent">For Rent / Lease</option>
-                                    <option value="sold">Sold</option>
-                                </select>
+                                    {/* Compact action row: Show All Properties + Map/List + Home */}
+                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '6px', width: '100%', flexWrap: 'wrap' }}>
+                                        <button 
+                                            onClick={() => {
+                                                clearSearch();
+                                                setUserSearchCoords(null);
+                                                setDrawnFilteredLocations(null);
+                                                setClearBoundaryTrigger(prev => prev + 1);
+                                                if (showToast) showToast("Showing all properties on map!", "info");
+                                            }} 
+                                            style={{ 
+                                                background: '#ffffff', 
+                                                color: '#921214', 
+                                                border: '1.5px solid #921214', 
+                                                borderRadius: '16px', 
+                                                padding: '4px 10px', 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 700, 
+                                                cursor: 'pointer', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            <Globe size={12} /> Show All Properties
+                                        </button>
 
-                                <select className="realtor-select" value={advancedFilters.minPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minPrice: e.target.value }))}>
-                                    <option value="">Min Price</option>
-                                    <option value="1000000">₹10 Lakhs</option>
-                                    <option value="2500000">₹25 Lakhs</option>
-                                    <option value="5000000">₹50 Lakhs</option>
-                                    <option value="7500000">₹75 Lakhs</option>
-                                    <option value="10000000">₹1 Crore</option>
-                                </select>
+                                        <div className="realtor-view-toggle">
+                                            <button className={`realtor-view-btn ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>
+                                                <Map size={12} style={{ marginRight: '3px' }} /> Map
+                                            </button>
+                                            <button className={`realtor-view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')} style={{ padding: '4px 10px', fontSize: '0.75rem' }}>
+                                                <LayoutGrid size={12} style={{ marginRight: '3px' }} /> List
+                                            </button>
+                                        </div>
 
-                                <select className="realtor-select" value={advancedFilters.maxPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, maxPrice: e.target.value }))}>
-                                    <option value="">Max Price</option>
-                                    <option value="5000000">₹50 Lakhs</option>
-                                    <option value="10000000">₹1 Crore</option>
-                                    <option value="20000000">₹2 Crores</option>
-                                    <option value="50000000">₹5 Crores+</option>
-                                </select>
+                                        <button 
+                                            onClick={() => { setActiveTab('home'); clearSearch(); }} 
+                                            style={{ 
+                                                background: '#921214', 
+                                                color: '#ffffff', 
+                                                border: 'none', 
+                                                borderRadius: '16px', 
+                                                padding: '4px 10px', 
+                                                fontSize: '0.75rem', 
+                                                fontWeight: 700, 
+                                                cursor: 'pointer', 
+                                                display: 'flex', 
+                                                alignItems: 'center', 
+                                                gap: '4px'
+                                            }}
+                                        >
+                                            <ArrowLeft size={12} /> Home
+                                        </button>
+                                    </div>
 
-                                {advancedFilters.tab === 'commercial' ? (
-                                    <>
-                                        <select className="realtor-select" value={advancedFilters.minSqft} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minSqft: e.target.value }))}>
-                                            <option value="">Building Size</option>
-                                            <option value="500">500+ sqft</option>
-                                            <option value="1000">1,000+ sqft</option>
-                                            <option value="2500">2,500+ sqft</option>
-                                            <option value="5000">5,000+ sqft</option>
-                                            <option value="10000">10,000+ sqft</option>
-                                        </select>
+                                    {/* Expandable 3-Dot Filter Dropdowns Drawer */}
+                                    {isMobileFiltersOpen && (
+                                        <div className="realtor-search-bar-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', paddingTop: '6px', borderTop: '1px solid #e2e8f0' }}>
+                                            <select className="realtor-select" value={advancedFilters.transactionType} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, transactionType: e.target.value }))}>
+                                                <option value="all">All Properties</option>
+                                                <option value="for_sale">For Sale</option>
+                                                <option value="for_rent">For Rent / Lease</option>
+                                                <option value="sold">Sold</option>
+                                            </select>
 
-                                        <select className="realtor-select" value={advancedFilters.minLand} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minLand: e.target.value }))}>
-                                            <option value="">Min Land Area</option>
-                                            <option value="1000">1,000+ sqft</option>
-                                            <option value="5000">5,000+ sqft</option>
-                                            <option value="10000">10,000+ sqft</option>
-                                            <option value="43560">1 Acre+</option>
-                                        </select>
+                                            <select className="realtor-select" value={advancedFilters.minPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minPrice: e.target.value }))}>
+                                                <option value="">Min Price</option>
+                                                <option value="1000000">₹10 Lakhs</option>
+                                                <option value="2500000">₹25 Lakhs</option>
+                                                <option value="5000000">₹50 Lakhs</option>
+                                                <option value="7500000">₹75 Lakhs</option>
+                                                <option value="10000000">₹1 Crore</option>
+                                            </select>
 
-                                        <select className="realtor-select" value={advancedFilters.maxLand} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, maxLand: e.target.value }))}>
-                                            <option value="">Max Land Area</option>
-                                            <option value="5000">5,000 sqft</option>
-                                            <option value="10000">10,000 sqft</option>
-                                            <option value="43560">1 Acre</option>
-                                            <option value="217800">5 Acres</option>
-                                        </select>
-                                    </>
-                                ) : (
-                                    <>
-                                        <select className="realtor-select" value={advancedFilters.beds} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, beds: e.target.value }))}>
-                                            <option value="any">Beds</option>
-                                            <option value="1">1+</option>
-                                            <option value="2">2+</option>
-                                            <option value="3">3+</option>
-                                            <option value="4">4+</option>
-                                            <option value="5">5+</option>
-                                        </select>
+                                            <select className="realtor-select" value={advancedFilters.maxPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, maxPrice: e.target.value }))}>
+                                                <option value="">Max Price</option>
+                                                <option value="5000000">₹50 Lakhs</option>
+                                                <option value="10000000">₹1 Crore</option>
+                                                <option value="20000000">₹2 Crores</option>
+                                                <option value="50000000">₹5 Crores+</option>
+                                            </select>
 
-                                        <select className="realtor-select" value={advancedFilters.baths} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, baths: e.target.value }))}>
-                                            <option value="any">Baths</option>
-                                            <option value="1">1+</option>
-                                            <option value="2">2+</option>
-                                            <option value="3">3+</option>
-                                        </select>
-                                    </>
-                                )}
+                                            {advancedFilters.tab === 'commercial' ? (
+                                                <>
+                                                    <select className="realtor-select" value={advancedFilters.minSqft} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minSqft: e.target.value }))}>
+                                                        <option value="">Building Size</option>
+                                                        <option value="500">500+ sqft</option>
+                                                        <option value="1000">1,000+ sqft</option>
+                                                        <option value="2500">2,500+ sqft</option>
+                                                        <option value="5000">5,000+ sqft</option>
+                                                    </select>
 
-                                <button className="btn-realtor-search" onClick={() => showToast(`Searching for ${userSearchText || 'all listings'}...`, "info")}>
-                                    <Search size={18} />
-                                </button>
+                                                    <select className="realtor-select" value={advancedFilters.minLand} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minLand: e.target.value }))}>
+                                                        <option value="">Min Land Area</option>
+                                                        <option value="1000">1,000+ sqft</option>
+                                                        <option value="5000">5,000+ sqft</option>
+                                                        <option value="43560">1 Acre+</option>
+                                                    </select>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <select className="realtor-select" value={advancedFilters.beds} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, beds: e.target.value }))}>
+                                                        <option value="any">Beds</option>
+                                                        <option value="1">1+</option>
+                                                        <option value="2">2+</option>
+                                                        <option value="3">3+</option>
+                                                        <option value="4">4+</option>
+                                                    </select>
 
-                                <button className="btn-realtor-filter" onClick={() => setIsAdvancedFilterOpen(true)}>
-                                    <Sliders size={16} /> Filters
-                                </button>
+                                                    <select className="realtor-select" value={advancedFilters.baths} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, baths: e.target.value }))}>
+                                                        <option value="any">Baths</option>
+                                                        <option value="1">1+</option>
+                                                        <option value="2">2+</option>
+                                                        <option value="3">3+</option>
+                                                    </select>
+                                                </>
+                                            )}
 
-                                <button className="btn-realtor-filter" onClick={() => showToast("Search saved to your profile!", "success")}>
-                                    Save Search
-                                </button>
-                            </div>
-                        </div>
+                                            <button className="btn-realtor-filter" onClick={() => setIsAdvancedFilterOpen(true)} style={{ gridColumn: 'span 2' }}>
+                                                <Sliders size={14} /> More Filters
+                                            </button>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                /* Desktop Search Bar Grid */
+                                <div className="realtor-search-bar-grid">
+                                    <div style={{ position: 'relative', width: '100%', flex: 1, minWidth: '220px' }}>
+                                        <input type="text" className="realtor-input" placeholder="City, Neighbourhood, Address or MLS® number" value={userSearchText} onChange={(e) => setUserSearchText(e.target.value)} />
+                                        {userSearchText && (<X size={16} onClick={clearSearch} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', cursor: 'pointer' }} />)}
+                                    </div>
 
-                        {/* Results Bar */}
-                        <div className="realtor-results-bar">
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-                                <span className="realtor-results-count">Results: {sortedDisplayLocations.length} Listings</span>
-                                <select className="realtor-sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
-                                    <option value="newest">Newest</option>
-                                    <option value="price_low">Price (Low to High)</option>
-                                    <option value="price_high">Price (High to Low)</option>
-                                </select>
-                            </div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                <button 
-                                    onClick={() => {
-                                        clearSearch();
-                                        setUserSearchCoords(null);
-                                        setDrawnFilteredLocations(null);
-                                        setClearBoundaryTrigger(prev => prev + 1);
-                                        if (showToast) showToast("Showing all properties on map!", "info");
-                                    }} 
-                                    style={{ 
-                                        background: '#ffffff', 
-                                        color: '#921214', 
-                                        border: '1.5px solid #921214', 
-                                        borderRadius: '20px', 
-                                        padding: '7px 16px', 
-                                        fontSize: '0.82rem', 
-                                        fontWeight: 700, 
-                                        cursor: 'pointer', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px',
-                                        boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
-                                    }}
-                                    title="Reset location search and show all properties on map"
-                                >
-                                    <Globe size={14} /> Show All Properties
-                                </button>
+                                    <select className="realtor-select" value={advancedFilters.transactionType} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, transactionType: e.target.value }))}>
+                                        <option value="all">All Properties</option>
+                                        <option value="for_sale">For Sale</option>
+                                        <option value="for_rent">For Rent / Lease</option>
+                                        <option value="sold">Sold</option>
+                                    </select>
 
-                                <div className="realtor-view-toggle">
-                                    <button className={`realtor-view-btn ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
-                                        <Map size={14} style={{ marginRight: '4px' }} /> Map
+                                    <select className="realtor-select" value={advancedFilters.minPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minPrice: e.target.value }))}>
+                                        <option value="">Min Price</option>
+                                        <option value="1000000">₹10 Lakhs</option>
+                                        <option value="2500000">₹25 Lakhs</option>
+                                        <option value="5000000">₹50 Lakhs</option>
+                                        <option value="7500000">₹75 Lakhs</option>
+                                        <option value="10000000">₹1 Crore</option>
+                                    </select>
+
+                                    <select className="realtor-select" value={advancedFilters.maxPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, maxPrice: e.target.value }))}>
+                                        <option value="">Max Price</option>
+                                        <option value="5000000">₹50 Lakhs</option>
+                                        <option value="10000000">₹1 Crore</option>
+                                        <option value="20000000">₹2 Crores</option>
+                                        <option value="50000000">₹5 Crores+</option>
+                                    </select>
+
+                                    {advancedFilters.tab === 'commercial' ? (
+                                        <>
+                                            <select className="realtor-select" value={advancedFilters.minSqft} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minSqft: e.target.value }))}>
+                                                <option value="">Building Size</option>
+                                                <option value="500">500+ sqft</option>
+                                                <option value="1000">1,000+ sqft</option>
+                                                <option value="2500">2,500+ sqft</option>
+                                                <option value="5000">5,000+ sqft</option>
+                                                <option value="10000">10,000+ sqft</option>
+                                            </select>
+
+                                            <select className="realtor-select" value={advancedFilters.minLand} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minLand: e.target.value }))}>
+                                                <option value="">Min Land Area</option>
+                                                <option value="1000">1,000+ sqft</option>
+                                                <option value="5000">5,000+ sqft</option>
+                                                <option value="10000">10,000+ sqft</option>
+                                                <option value="43560">1 Acre+</option>
+                                            </select>
+
+                                            <select className="realtor-select" value={advancedFilters.maxLand} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, maxLand: e.target.value }))}>
+                                                <option value="">Max Land Area</option>
+                                                <option value="5000">5,000 sqft</option>
+                                                <option value="10000">10,000 sqft</option>
+                                                <option value="43560">1 Acre</option>
+                                                <option value="217800">5 Acres</option>
+                                            </select>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <select className="realtor-select" value={advancedFilters.beds} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, beds: e.target.value }))}>
+                                                <option value="any">Beds</option>
+                                                <option value="1">1+</option>
+                                                <option value="2">2+</option>
+                                                <option value="3">3+</option>
+                                                <option value="4">4+</option>
+                                                <option value="5">5+</option>
+                                            </select>
+
+                                            <select className="realtor-select" value={advancedFilters.baths} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, baths: e.target.value }))}>
+                                                <option value="any">Baths</option>
+                                                <option value="1">1+</option>
+                                                <option value="2">2+</option>
+                                                <option value="3">3+</option>
+                                            </select>
+                                        </>
+                                    )}
+
+                                    <button className="btn-realtor-search" onClick={() => showToast(`Searching for ${userSearchText || 'all listings'}...`, "info")}>
+                                        <Search size={18} />
                                     </button>
-                                    <button className={`realtor-view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
-                                        <LayoutGrid size={14} style={{ marginRight: '4px' }} /> List
+
+                                    <button className="btn-realtor-filter" onClick={() => setIsAdvancedFilterOpen(true)}>
+                                        <Sliders size={16} /> Filters
+                                    </button>
+
+                                    <button className="btn-realtor-filter" onClick={() => showToast("Search saved to your profile!", "success")}>
+                                        Save Search
                                     </button>
                                 </div>
-                                <button 
-                                    onClick={() => { setActiveTab('home'); clearSearch(); }} 
-                                    style={{ 
-                                        background: '#921214', 
-                                        color: '#ffffff', 
-                                        border: 'none', 
-                                        borderRadius: '20px', 
-                                        padding: '8px 18px', 
-                                        fontSize: '0.85rem', 
-                                        fontWeight: 700, 
-                                        cursor: 'pointer', 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
-                                        gap: '6px',
-                                        boxShadow: '0 2px 6px rgba(146, 18, 20, 0.3)'
-                                    }}
-                                >
-                                    <ArrowLeft size={16} /> Back to Home Page
-                                </button>
-                            </div>
+                            )}
                         </div>
+
+                        {/* Desktop Results Bar */}
+                        {!isMobileView && (
+                            <div className="realtor-results-bar">
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+                                    <span className="realtor-results-count">Results: {sortedDisplayLocations.length} Listings</span>
+                                    <select className="realtor-sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+                                        <option value="newest">Newest</option>
+                                        <option value="price_low">Price (Low to High)</option>
+                                        <option value="price_high">Price (High to Low)</option>
+                                    </select>
+                                </div>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                    <button 
+                                        onClick={() => {
+                                            clearSearch();
+                                            setUserSearchCoords(null);
+                                            setDrawnFilteredLocations(null);
+                                            setClearBoundaryTrigger(prev => prev + 1);
+                                            if (showToast) showToast("Showing all properties on map!", "info");
+                                        }} 
+                                        style={{ 
+                                            background: '#ffffff', 
+                                            color: '#921214', 
+                                            border: '1.5px solid #921214', 
+                                            borderRadius: '20px', 
+                                            padding: '7px 16px', 
+                                            fontSize: '0.82rem', 
+                                            fontWeight: 700, 
+                                            cursor: 'pointer', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px',
+                                            boxShadow: '0 2px 6px rgba(0,0,0,0.08)'
+                                        }}
+                                        title="Reset location search and show all properties on map"
+                                    >
+                                        <Globe size={14} /> Show All Properties
+                                    </button>
+
+                                    <div className="realtor-view-toggle">
+                                        <button className={`realtor-view-btn ${viewMode === 'map' ? 'active' : ''}`} onClick={() => setViewMode('map')}>
+                                            <Map size={14} style={{ marginRight: '4px' }} /> Map
+                                        </button>
+                                        <button className={`realtor-view-btn ${viewMode === 'list' ? 'active' : ''}`} onClick={() => setViewMode('list')}>
+                                            <LayoutGrid size={14} style={{ marginRight: '4px' }} /> List
+                                        </button>
+                                    </div>
+                                    <button 
+                                        onClick={() => { setActiveTab('home'); clearSearch(); }} 
+                                        style={{ 
+                                            background: '#921214', 
+                                            color: '#ffffff', 
+                                            border: 'none', 
+                                            borderRadius: '20px', 
+                                            padding: '8px 18px', 
+                                            fontSize: '0.85rem', 
+                                            fontWeight: 700, 
+                                            cursor: 'pointer', 
+                                            display: 'flex', 
+                                            alignItems: 'center', 
+                                            gap: '6px',
+                                            boxShadow: '0 2px 6px rgba(146, 18, 20, 0.3)'
+                                        }}
+                                    >
+                                        <ArrowLeft size={16} /> Back to Home Page
+                                    </button>
+                                </div>
+                            </div>
+                        )}
 
                         {/* Main Content */}
                         <div style={{ flex: 1, display: 'flex', overflow: 'hidden', position: 'relative' }}>
                             
-                            {/* Left Sidebar Cards — Map mode */}
-                            {viewMode === 'map' && (
+                            {/* Left Sidebar Cards — Map mode (Desktop only) */}
+                            {viewMode === 'map' && !isMobileView && isDirectoryOpen && (
                                 <div style={{ 
                                     width: isDirectoryOpen ? '380px' : '0px', 
                                     background: '#ffffff', 
@@ -1475,9 +1625,11 @@ export default function UserPortal({
                             {/* Map */}
                             {viewMode === 'map' && (
                                 <div style={{ flex: 1, position: 'relative', display: 'flex' }}>
-                                    <div onClick={() => setIsDirectoryOpen(!isDirectoryOpen)} style={{ position: 'absolute', left: 0, top: '16px', zIndex: 100, background: '#ffffff', border: '1px solid #e2e8f0', borderLeft: 'none', borderRadius: '0 8px 8px 0', padding: '10px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 0 8px rgba(0,0,0,0.1)' }}>
-                                        {isDirectoryOpen ? <ChevronLeft size={18} color="#921214" /> : <ChevronRight size={18} color="#921214" />}
-                                    </div>
+                                    {!isMobileView && (
+                                        <div onClick={() => setIsDirectoryOpen(!isDirectoryOpen)} style={{ position: 'absolute', left: 0, top: '16px', zIndex: 100, background: '#ffffff', border: '1px solid #e2e8f0', borderLeft: 'none', borderRadius: '0 8px 8px 0', padding: '10px 4px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', boxShadow: '2px 0 8px rgba(0,0,0,0.1)' }}>
+                                            {isDirectoryOpen ? <ChevronLeft size={18} color="#921214" /> : <ChevronRight size={18} color="#921214" />}
+                                        </div>
+                                    )}
                                     <div style={{ flex: 1, position: 'relative' }}>
                                         <GlobalMap 
                                             locations={filteredLocations} 

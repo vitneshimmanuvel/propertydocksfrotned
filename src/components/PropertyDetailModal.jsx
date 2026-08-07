@@ -79,7 +79,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                 style={{ position: 'relative' }}
             >
                 {/* Modal Header Breadcrumbs Bar */}
-                <div style={{ padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff', sticky: 'top', zIndex: 10 }}>
+                <div className="realtor-modal-header" style={{ padding: '14px 24px', borderBottom: '1px solid #e2e8f0', display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#ffffff', sticky: 'top', zIndex: 10 }}>
                     <div style={{ fontSize: '0.82rem', color: '#64748b', fontWeight: 500 }}>
                         Home / TN / South India / <span style={{ color: '#0f172a', fontWeight: 700 }}>{listing.district || listing.location || 'Erode'}</span> / {listing.name || listing.title || '18 BOONE CRESCENT'}
                     </div>
@@ -100,9 +100,9 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                     </div>
                 </div>
 
-                <div style={{ padding: '24px' }}>
+                <div className="realtor-modal-body" style={{ padding: '24px' }}>
                     {/* Header Address Title */}
-                    <h1 style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
+                    <h1 className="realtor-detail-title" style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
                         {listing.title || listing.name || listing.address || '18 BOONE CRESCENT'}
                     </h1>
 
@@ -144,7 +144,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                     </div>
 
                     {/* Main Content Layout */}
-                    <div style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px', marginTop: '24px' }}>
+                    <div className="realtor-detail-split-container" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px', marginTop: '24px' }}>
                         {/* Left Details Panel */}
                         <div>
                             {/* Listed Time Badge */}
@@ -153,7 +153,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                             </div>
 
                             {/* Price */}
-                            <div style={{ fontSize: '2.4rem', fontWeight: '900', color: '#921214', margin: '0 0 6px 0' }}>
+                            <div className="realtor-detail-price" style={{ fontSize: '2.4rem', fontWeight: '900', color: '#921214', margin: '0 0 6px 0' }}>
                                 {displayPrice}
                             </div>
 
@@ -162,7 +162,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                             </p>
 
                             {/* Key Metrics Pill Grid */}
-                            <div style={{ display: 'flex', gap: '24px', padding: '16px 0', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap' }}>
+                            <div className="realtor-metrics-row" style={{ display: 'flex', gap: '24px', padding: '16px 0', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap' }}>
                                 <div>
                                     <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', fontWeight: 700 }}>BEDROOMS</span>
                                     <strong style={{ fontSize: '1.15rem', color: '#0f172a' }}>{listing.beds || 3} Beds</strong>
@@ -189,7 +189,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
 
                             {/* Verification & Legal Highlights */}
                             <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', marginBottom: '12px' }}>Legal & Property Highlights</h3>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '32px' }}>
+                            <div className="realtor-legal-highlights-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '32px' }}>
                                 {[
                                     '100% Parent Title Verification',
                                     'Encumbrance Certificate (EC) Clear',

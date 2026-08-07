@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { Home, PlusCircle, List, MapPin, MessageSquare, Phone, Calendar, Mail, Edit2, Trash2, Map, ShieldCheck, LogOut } from 'lucide-react';
-import { GoogleMap, useJsApiLoader, Marker, StandaloneSearchBox } from '@react-google-maps/api';
+import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { saveFullDatabase } from '../utils/api';
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyDU7d-rl_p88O4tel70xd5UKPA3x8n5foU";
-const libraries = ['places', 'drawing', 'geometry'];
+const libraries = ['drawing', 'geometry'];
 
 const defaultCenter = {
   lat: 20.5937,
@@ -699,29 +699,22 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                 <div className="form-group" style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
                                     <label>Pin Location on Map (Required)</label>
                                     <div style={{ marginBottom: '12px' }}>
-                                        {isLoaded && (
-                                            <StandaloneSearchBox
-                                                onLoad={onSearchBoxLoad}
-                                                onPlacesChanged={onPlacesChanged}
-                                            >
-                                                <input
-                                                    type="text"
-                                                    placeholder="Search location to pin..."
-                                                    style={{
-                                                        boxSizing: 'border-box',
-                                                        border: '1px solid var(--border-color)',
-                                                        width: '100%',
-                                                        height: '42px',
-                                                        padding: '0 16px',
-                                                        borderRadius: 'var(--radius-md)',
-                                                        fontSize: '14px',
-                                                        outline: 'none',
-                                                        background: 'var(--bg-main)',
-                                                        color: 'var(--text-primary)'
-                                                    }}
-                                                />
-                                            </StandaloneSearchBox>
-                                        )}
+                                        <input
+                                            type="text"
+                                            placeholder="Click directly on map to pin location..."
+                                            style={{
+                                                boxSizing: 'border-box',
+                                                border: '1px solid var(--border-color)',
+                                                width: '100%',
+                                                height: '42px',
+                                                padding: '0 16px',
+                                                borderRadius: 'var(--radius-md)',
+                                                fontSize: '14px',
+                                                outline: 'none',
+                                                background: 'var(--bg-main)',
+                                                color: 'var(--text-primary)'
+                                            }}
+                                        />
                                     </div>
                                     <div style={{ minHeight: '300px', flex: 1, width: '100%', borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border-color)', position: 'relative' }}>
                                         {isLoaded ? (

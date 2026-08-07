@@ -9,11 +9,11 @@ const containerStyle = {
 
 const defaultCenter = {
   lat: 11.3410,
-  lng: 77.7172 // Default Erode / Tamil Nadu regionnn
+  lng: 77.7172 // Default Erode / Tamil Nadu regionn
 };
 
 const GOOGLE_MAPS_API_KEY = "AIzaSyDU7d-rl_p88O4tel70xd5UKPA3x8n5foU";
-const libraries = ['places', 'drawing', 'geometry'];
+const libraries = ['drawing', 'geometry'];
 
 const formatRelativeTime = (dateInput) => {
     if (!dateInput) return 'Recently listed';
