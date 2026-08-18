@@ -69,7 +69,8 @@ export default function GlobalMap({
     onLoginReq, 
     isFavorite, 
     onToggleFavorite,
-    onSelectDetail
+    onSelectDetail,
+    onShowAllProperties
 }) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -112,7 +113,53 @@ export default function GlobalMap({
     // Track map user panning and zooming
     const handleMapLoad = useCallback((map) => {
         mapRef.current = map;
-    }, []);
+        if (locations && locations.length > 0 && window.google && window.google.maps) {
+            if (locations.length === 1 && locations[0].lat && locations[0].lng) {
+                map.panTo({ lat: locations[0].lat, lng: locations[0].lng });
+                map.setZoom(14);
+            } else {
+                const bounds = new window.google.maps.LatLngBounds();
+                let count = 0;
+                locations.forEach(loc => {
+                    if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+                        bounds.extend({ lat: loc.lat, lng: loc.lng });
+                        count++;
+                    }
+                });
+                if (count > 0) {
+                    map.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+                }
+            }
+        }
+    }, [locations]);
+
+    // Automatically fit map bounds to display all existing properties when search navigation occurs or locations change
+    useEffect(() => {
+        if (!mapRef.current || !locations || locations.length === 0 || !window.google || !window.google.maps) return;
+
+        if (focusedLocation && focusedLocation.lat && focusedLocation.lng) {
+            mapRef.current.panTo({ lat: focusedLocation.lat, lng: focusedLocation.lng });
+            mapRef.current.setZoom(14);
+            return;
+        }
+
+        if (locations.length === 1 && locations[0].lat && locations[0].lng) {
+            mapRef.current.panTo({ lat: locations[0].lat, lng: locations[0].lng });
+            mapRef.current.setZoom(14);
+        } else {
+            const bounds = new window.google.maps.LatLngBounds();
+            let validPointsCount = 0;
+            locations.forEach(loc => {
+                if (loc && typeof loc.lat === 'number' && typeof loc.lng === 'number') {
+                    bounds.extend({ lat: loc.lat, lng: loc.lng });
+                    validPointsCount++;
+                }
+            });
+            if (validPointsCount > 0) {
+                mapRef.current.fitBounds(bounds, { top: 60, bottom: 60, left: 60, right: 60 });
+            }
+        }
+    }, [locations, focusedLocation]);
 
     const handleIdle = useCallback(() => {
         if (mapRef.current) {
@@ -235,6 +282,39 @@ export default function GlobalMap({
         <div style={{ display: 'flex', flexDirection: 'column', height: '100%', width: '100%', background: 'var(--bg-surface)' }}>
             <div style={{ flex: 1, position: 'relative' }}>
                 
+                {/* Floating "Show All Properties" Button directly inside Map overlay (Top Right) */}
+                <button 
+                    onClick={() => {
+                        if (onShowAllProperties) {
+                            onShowAllProperties();
+                        } else {
+                            setPolygonPath([]);
+                            setCurrentPath([]);
+                        }
+                    }}
+                    style={{
+                        position: 'absolute',
+                        top: '12px',
+                        right: '12px',
+                        zIndex: 100,
+                        background: '#ffffff',
+                        color: '#921214',
+                        border: '2px solid #921214',
+                        borderRadius: '24px',
+                        padding: '7px 14px',
+                        fontSize: '0.8rem',
+                        fontWeight: 800,
+                        boxShadow: '0 4px 14px rgba(0,0,0,0.25)',
+                        cursor: 'pointer',
+                        display: 'flex',
+                        alignItems: 'center',
+                        gap: '5px'
+                    }}
+                    title="Show all available properties on the map"
+                >
+                    🌐 Show All Properties
+                </button>
+
                 {/* Custom Drawing Controls */}
                 <div style={{ position: 'absolute', bottom: '20px', left: '50%', transform: 'translateX(-50%)', zIndex: 10, display: 'flex', gap: '10px' }}>
                     <button 

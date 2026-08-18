@@ -3341,7 +3341,35 @@ header {
 
     /* Realtor Header & Subnav Mobile Styles */
     .realtor-header {
-        display: none !important;
+        display: flex !important;
+        background-color: var(--primary) !important;
+        color: #ffffff !important;
+        height: auto !important;
+        min-height: 52px !important;
+        padding: 6px 12px !important;
+        align-items: center !important;
+        justify-content: space-between !important;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15) !important;
+        z-index: 1000 !important;
+        position: relative !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+
+    .realtor-logo-box {
+        padding: 3px 8px !important;
+        gap: 6px !important;
+        border-radius: 6px !important;
+    }
+
+    .realtor-logo-box img {
+        height: 26px !important;
+        width: auto !important;
+    }
+
+    .realtor-logo-box span {
+        font-size: 0.88rem !important;
+        font-weight: 900 !important;
     }
 
     .realtor-top-actions {
@@ -3349,8 +3377,9 @@ header {
         font-size: 0.78rem !important;
     }
 
-    .realtor-top-action-btn span {
-        display: none !important;
+    .realtor-top-action-btn {
+        padding: 4px 8px !important;
+        font-size: 0.72rem !important;
     }
 
     .realtor-subnav {

@@ -201,24 +201,18 @@ export default function UserPortal({
         };
     };
 
-    const loadAllLocations = useCallback(async () => {
+    const loadAllLocations = useCallback(() => {
         if (!database) return;
 
-        const ownerPromises = (database.ownerListings || []).filter(listing => listing.status !== 'disabled').map(async (listing, idx) => {
+        // 1. Owner Listings
+        const ownerResults = (database.ownerListings || []).filter(listing => listing.status !== 'disabled').map((listing, idx) => {
             let lat = listing.lat;
             let lng = listing.lng;
 
             if (!lat || !lng) {
-                const fullAddr = [listing.street, listing.landmark, listing.location, listing.pincode].filter(Boolean).join(", ");
-                const geocoded = await geocodeAddress(fullAddr || listing.location, listing);
-                if (geocoded && geocoded.lat && geocoded.lng) {
-                    lat = geocoded.lat;
-                    lng = geocoded.lng;
-                } else {
-                    const fb = getFallbackCoords(listing.location || listing.street || listing.landmark || 'Erode', idx + 50);
-                    lat = fb.lat;
-                    lng = fb.lng;
-                }
+                const fb = getFallbackCoords(listing.location || listing.street || listing.landmark || 'Erode', idx + 50);
+                lat = fb.lat;
+                lng = fb.lng;
             } else if (listing.locationPrivacy === 'approximate') {
                 const jitter = 0.002;
                 const seed = listing.id ? listing.id.charCodeAt(listing.id.length - 1) : 0;
@@ -251,8 +245,40 @@ export default function UserPortal({
             };
         });
 
-        const ownerResults = await Promise.all(ownerPromises);
-        setAllLocations(ownerResults.filter(Boolean));
+        // 2. Layout Projects (database.layouts)
+        const layoutResults = (database.layouts || []).map((layout, idx) => {
+            let lat = layout.lat;
+            let lng = layout.lng;
+            if (!lat || !lng) {
+                const fb = getFallbackCoords(layout.district || layout.area || layout.name || 'Vijayamangalam', idx + 100);
+                lat = fb.lat;
+                lng = fb.lng;
+            }
+            const defaultImg = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
+            const displayAddress = `${layout.name || 'Property Layout'}, ${layout.area || ''}, ${layout.district || 'Erode'}`;
+
+            return {
+                id: layout.id || `layout_${idx}`,
+                name: layout.name || 'Property Layout',
+                title: layout.name || 'Property Layout',
+                lat,
+                lng,
+                isOwnerListing: false,
+                isLayoutProject: true,
+                district: layout.district || 'Erode',
+                state: layout.state || 'Tamil Nadu',
+                area: layout.area || layout.district || 'Vijayamangalam',
+                displayAddress,
+                location: layout.district || 'Erode',
+                price: layout.plots && layout.plots.length > 0 ? (layout.plots[0].price ? layout.plots[0].price * (layout.plots[0].area || 1200) : 4500000) : 4500000,
+                media: [{ type: 'image', url: layout.backgroundImage?.href || defaultImg }],
+                plots: layout.plots || [],
+                category: 'residential',
+                createdAt: layout.created_at || new Date().toISOString()
+            };
+        });
+
+        setAllLocations([...ownerResults.filter(Boolean), ...layoutResults.filter(Boolean)]);
     }, [database]);
 
     useEffect(() => {
@@ -913,11 +939,19 @@ export default function UserPortal({
         }
         return locs;
     }, [displayLocations, sortBy]);
-
-    const handleHeroSearch = () => {
-        if (userSearchText.trim()) {
+    const handleHeroSearch = (overrideQuery) => {
+        const query = (typeof overrideQuery === 'string' ? overrideQuery : userSearchText || '').trim();
+        if (query) {
+            setUserSearchText(query);
+            // Auto-detect target region coordinates if city/district match
+            const fbCoords = getFallbackCoords(query, 0);
+            if (fbCoords) {
+                setUserSearchCoords(fbCoords);
+            }
             setActiveTab('search');
-            showToast(`Searching for "${userSearchText}"...`, "info");
+            if (showToast) showToast(`Searching for "${query}"...`, "info");
+        } else {
+            setActiveTab('search');
         }
     };
 
@@ -960,6 +994,9 @@ export default function UserPortal({
                         {/* Hero Section — Immersive Full Viewport Height */}
                         <div className="realtor-hero" style={{ 
                             backgroundImage: 'url("https://images.unsplash.com/photo-1570129477492-45c003edd2be?auto=format&fit=crop&w=1920&q=80")',
+                            backgroundColor: '#0f172a',
+                            backgroundSize: 'cover',
+                            backgroundPosition: 'center',
                             minHeight: 'calc(100vh - 96px)',
                             display: 'flex',
                             flexDirection: 'column',
@@ -1644,6 +1681,13 @@ export default function UserPortal({
                                             onToggleFavorite={toggleFavorite}
                                             onContactOwner={(loc) => { setSelectedContactListing(loc); setContactModalOpen(true); }}
                                             onSelectDetail={(loc) => setSelectedDetailListing(loc)}
+                                            onShowAllProperties={() => {
+                                                clearSearch();
+                                                setUserSearchCoords(null);
+                                                setDrawnFilteredLocations(null);
+                                                setClearBoundaryTrigger(prev => prev + 1);
+                                                if (showToast) showToast("Showing all properties on map!", "info");
+                                            }}
                                         />
                                     </div>
                                 </div>
