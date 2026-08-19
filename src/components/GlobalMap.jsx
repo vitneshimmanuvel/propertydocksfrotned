@@ -70,7 +70,8 @@ export default function GlobalMap({
     isFavorite, 
     onToggleFavorite,
     onSelectDetail,
-    onShowAllProperties
+    onShowAllProperties,
+    onCopyLink
 }) {
     const { isLoaded } = useJsApiLoader({
         id: 'google-map-script',
@@ -85,7 +86,71 @@ export default function GlobalMap({
     const [currentPath, setCurrentPath] = useState([]);
     const [filteredLocations, setFilteredLocations] = useState([]);
     const [isDragging, setIsDragging] = useState(false);
+    const [copiedLocId, setCopiedLocId] = useState(null);
     const [activeMediaIndex, setActiveMediaIndex] = useState(0);
+
+    const handleCopyLink = useCallback((loc, e) => {
+        if (e) {
+            if (e.stopPropagation) e.stopPropagation();
+            if (e.preventDefault) e.preventDefault();
+            if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+                e.nativeEvent.stopImmediatePropagation();
+            }
+        }
+        if (!loc || !loc.id) return;
+
+        const baseUrl = `${window.location.origin}${window.location.pathname}`;
+        const shareUrl = `${baseUrl}?property=${encodeURIComponent(loc.id)}`;
+
+        setCopiedLocId(loc.id);
+        setTimeout(() => setCopiedLocId(null), 2500);
+
+        const notifySuccess = () => {
+            if (onCopyLink) onCopyLink(loc);
+        };
+
+        if (navigator.clipboard && window.isSecureContext !== false) {
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                notifySuccess();
+            }).catch(() => {
+                fallbackCopyText(loc, shareUrl, notifySuccess);
+            });
+        } else {
+            fallbackCopyText(loc, shareUrl, notifySuccess);
+        }
+    }, [onCopyLink]);
+
+    const fallbackCopyText = (loc, shareUrl, onSuccess) => {
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.width = "2em";
+            textArea.style.height = "2em";
+            textArea.style.padding = "0";
+            textArea.style.border = "none";
+            textArea.style.outline = "none";
+            textArea.style.boxShadow = "none";
+            textArea.style.background = "transparent";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+            const successful = document.execCommand("copy");
+            document.body.removeChild(textArea);
+            if (successful) {
+                onSuccess();
+            } else {
+                window.prompt("Copy direct property link:", shareUrl);
+                onSuccess();
+            }
+        } catch (err) {
+            window.prompt("Copy direct property link:", shareUrl);
+            onSuccess();
+        }
+    };
 
     const mapRef = React.useRef(null);
 
@@ -294,7 +359,7 @@ export default function GlobalMap({
                     }}
                     style={{
                         position: 'absolute',
-                        top: '12px',
+                        top: '58px',
                         right: '12px',
                         zIndex: 100,
                         background: '#ffffff',
@@ -536,6 +601,34 @@ export default function GlobalMap({
                                                     <svg width="15" height="15" viewBox="0 0 24 24" fill={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "none"} stroke={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "#64748b"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                                                 </div>
 
+                                                {/* Copy Link Share Button */}
+                                                <div 
+                                                    onClick={(e) => handleCopyLink(selectedLocation, e)}
+                                                    title={copiedLocId === selectedLocation.id ? "Link Copied!" : "Copy Direct Property Link"}
+                                                    style={{ 
+                                                        position: 'absolute', 
+                                                        top: '8px', 
+                                                        right: '76px', 
+                                                        background: copiedLocId === selectedLocation.id ? '#16a34a' : 'rgba(255,255,255,0.95)', 
+                                                        borderRadius: '50%', 
+                                                        width: '28px', 
+                                                        height: '28px', 
+                                                        display: 'flex', 
+                                                        alignItems: 'center', 
+                                                        justifyContent: 'center', 
+                                                        cursor: 'pointer', 
+                                                        boxShadow: '0 2px 6px rgba(0,0,0,0.2)', 
+                                                        zIndex: 12,
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                >
+                                                    {copiedLocId === selectedLocation.id ? (
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                    ) : (
+                                                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#921214" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                                    )}
+                                                </div>
+
                                                 <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(15, 23, 42, 0.75)', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '3px', backdropFilter: 'blur(4px)', fontWeight: 600 }}>
                                                     {activeMediaIndex + 1}/{mediaList.length} Photos
                                                 </div>
@@ -612,6 +705,41 @@ export default function GlobalMap({
                                                         </button>
                                                     )}
                                                 </div>
+
+                                                {/* Full Copy Property Link Button */}
+                                                <button 
+                                                    style={{ 
+                                                        width: '100%',
+                                                        marginTop: '8px',
+                                                        padding: '8px 10px', 
+                                                        background: copiedLocId === selectedLocation.id ? '#16a34a' : '#ffffff', 
+                                                        color: copiedLocId === selectedLocation.id ? '#ffffff' : '#921214', 
+                                                        border: copiedLocId === selectedLocation.id ? '1.5px solid #16a34a' : '1.5px solid #921214', 
+                                                        borderRadius: '6px', 
+                                                        fontWeight: '800',
+                                                        fontSize: '0.78rem',
+                                                        cursor: 'pointer',
+                                                        display: 'flex',
+                                                        alignItems: 'center',
+                                                        justifyContent: 'center',
+                                                        gap: '6px',
+                                                        boxShadow: '0 2px 5px rgba(0,0,0,0.1)',
+                                                        transition: 'all 0.2s ease'
+                                                    }}
+                                                    onClick={(e) => handleCopyLink(selectedLocation, e)}
+                                                >
+                                                    {copiedLocId === selectedLocation.id ? (
+                                                        <>
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                            ✓ Link Copied!
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#921214" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+                                                            Copy Share Link
+                                                        </>
+                                                    )}
+                                                </button>
                                             </div>
                                         </>
                                     );

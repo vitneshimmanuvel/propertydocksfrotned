@@ -28,6 +28,7 @@ import {
     Video,
     X,
     Heart,
+    Share2,
     Globe,
     Users,
     FileText,
@@ -658,6 +659,98 @@ export default function UserPortal({
         });
     }, [showToast]);
 
+    const [copiedPropertyId, setCopiedPropertyId] = useState(null);
+
+    const handleCopyPropertyLink = useCallback((loc, e) => {
+        if (e) {
+            if (e.stopPropagation) e.stopPropagation();
+            if (e.preventDefault) e.preventDefault();
+            if (e.nativeEvent && e.nativeEvent.stopImmediatePropagation) {
+                e.nativeEvent.stopImmediatePropagation();
+            }
+        }
+        if (!loc || !loc.id) return;
+
+        const baseUrl = window.location.origin + window.location.pathname;
+        const shareUrl = `${baseUrl}?property=${encodeURIComponent(loc.id)}`;
+
+        setCopiedPropertyId(loc.id);
+        setTimeout(() => setCopiedPropertyId(null), 2500);
+
+        const notifySuccess = () => {
+            if (showToast) showToast("Property share link copied to clipboard!", "success");
+        };
+
+        if (navigator.clipboard && window.isSecureContext !== false) {
+            navigator.clipboard.writeText(shareUrl).then(() => {
+                notifySuccess();
+            }).catch(() => {
+                fallbackCopyUserPortal(loc, shareUrl, notifySuccess);
+            });
+        } else {
+            fallbackCopyUserPortal(loc, shareUrl, notifySuccess);
+        }
+    }, [showToast]);
+
+    const fallbackCopyUserPortal = (loc, shareUrl, onSuccess) => {
+        try {
+            const textArea = document.createElement("textarea");
+            textArea.value = shareUrl;
+            textArea.style.position = "fixed";
+            textArea.style.top = "0";
+            textArea.style.left = "0";
+            textArea.style.width = "2em";
+            textArea.style.height = "2em";
+            textArea.style.padding = "0";
+            textArea.style.border = "none";
+            textArea.style.outline = "none";
+            textArea.style.boxShadow = "none";
+            textArea.style.background = "transparent";
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+            textArea.setSelectionRange(0, 99999);
+            const successful = document.execCommand("copy");
+            document.body.removeChild(textArea);
+            if (successful) {
+                onSuccess();
+            } else {
+                window.prompt("Copy this property direct link:", shareUrl);
+                onSuccess();
+            }
+        } catch (err) {
+            window.prompt("Copy this property direct link:", shareUrl);
+            onSuccess();
+        }
+    };
+
+    // Handle deep linking from share URL parameters (?property=ID or #property=ID)
+    useEffect(() => {
+        if (!allLocations || allLocations.length === 0) return;
+
+        const params = new URLSearchParams(window.location.search);
+        let targetId = params.get('property') || params.get('prop') || params.get('id');
+
+        if (!targetId && window.location.hash) {
+            const hash = window.location.hash;
+            if (hash.includes('property=')) {
+                targetId = hash.split('property=')[1].split('&')[0];
+            } else if (hash.includes('prop=')) {
+                targetId = hash.split('prop=')[1].split('&')[0];
+            }
+        }
+
+        if (targetId) {
+            const decodedId = decodeURIComponent(targetId);
+            const match = allLocations.find(l => String(l.id) === String(decodedId));
+            if (match) {
+                setActiveTab('search');
+                setFocusedLocation(match);
+                if (showToast) showToast(`Displaying shared property: ${match.name || match.title || 'Selected Listing'}`, "info");
+            }
+        }
+    }, [allLocations, showToast]);
+
     // Keep state / district dropdowns valid
     const uniqueStates = useMemo(() => {
         const states = database.layouts.map(l => l.state || "Tamil Nadu");
@@ -1123,6 +1216,18 @@ export default function UserPortal({
                                                         }}
                                                     >
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
+                                                    </button>
+                                                    <button 
+                                                        className="realtor-listing-fav"
+                                                        style={{ right: '48px', background: copiedPropertyId === loc.id ? '#16a34a' : 'rgba(255,255,255,0.92)' }}
+                                                        title={copiedPropertyId === loc.id ? "Link Copied!" : "Copy Share Link"}
+                                                        onClick={(e) => handleCopyPropertyLink(loc, e)}
+                                                    >
+                                                        {copiedPropertyId === loc.id ? (
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                        ) : (
+                                                            <Share2 size={15} color="#921214" />
+                                                        )}
                                                     </button>
                                                     <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '3px', fontWeight: 600 }}>
                                                         {loc.listedAgo || 'Recently Added'}
@@ -1635,6 +1740,18 @@ export default function UserPortal({
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
                                                     </button>
+                                                    <button 
+                                                        className="realtor-listing-fav" 
+                                                        style={{ right: '48px', background: copiedPropertyId === loc.id ? '#16a34a' : 'rgba(255,255,255,0.92)' }} 
+                                                        title={copiedPropertyId === loc.id ? "Link Copied!" : "Copy Share Link"} 
+                                                        onClick={(e) => handleCopyPropertyLink(loc, e)}
+                                                    >
+                                                        {copiedPropertyId === loc.id ? (
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                        ) : (
+                                                            <Share2 size={15} color="#921214" />
+                                                        )}
+                                                    </button>
                                                     <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '3px', fontWeight: 600 }}>{loc.listedAgo || '2 hours ago'}</div>
                                                 </div>
                                                 <div className="realtor-listing-card-body">
@@ -1681,6 +1798,7 @@ export default function UserPortal({
                                             onToggleFavorite={toggleFavorite}
                                             onContactOwner={(loc) => { setSelectedContactListing(loc); setContactModalOpen(true); }}
                                             onSelectDetail={(loc) => setSelectedDetailListing(loc)}
+                                            onCopyLink={handleCopyPropertyLink}
                                             onShowAllProperties={() => {
                                                 clearSearch();
                                                 setUserSearchCoords(null);
@@ -1703,6 +1821,18 @@ export default function UserPortal({
                                                     <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} />
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
+                                                    </button>
+                                                    <button 
+                                                        className="realtor-listing-fav" 
+                                                        style={{ right: '48px', background: copiedPropertyId === loc.id ? '#16a34a' : 'rgba(255,255,255,0.92)' }} 
+                                                        title={copiedPropertyId === loc.id ? "Link Copied!" : "Copy Share Link"} 
+                                                        onClick={(e) => handleCopyPropertyLink(loc, e)}
+                                                    >
+                                                        {copiedPropertyId === loc.id ? (
+                                                            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                                        ) : (
+                                                            <Share2 size={15} color="#921214" />
+                                                        )}
                                                     </button>
                                                 </div>
                                                 <div className="realtor-listing-card-body">
@@ -1994,6 +2124,7 @@ export default function UserPortal({
                 onClose={() => setSelectedDetailListing(null)}
                 isFavorite={isFavorite}
                 onToggleFavorite={toggleFavorite}
+                onCopyLink={handleCopyPropertyLink}
                 onRequestShowing={(listing) => { setSelectedContactListing(listing); setSelectedDetailListing(null); setContactModalOpen(true); }}
             />
 

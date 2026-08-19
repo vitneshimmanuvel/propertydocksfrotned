@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import UniversalVideoPlayer from './UniversalVideoPlayer';
 
-export default function PropertyDetailModal({ listing, isOpen, onClose, onToggleFavorite, isFavorite, onRequestShowing }) {
+export default function PropertyDetailModal({ listing, isOpen, onClose, onToggleFavorite, isFavorite, onRequestShowing, onCopyLink }) {
     if (!isOpen || !listing) return null;
 
     const defaultFallbackImages = [
@@ -39,6 +39,20 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
             : defaultFallbackImages.map(img => ({ type: 'image', url: img })));
 
     const [mediaList, setMediaList] = useState(initialMedia);
+    const [isCopied, setIsCopied] = useState(false);
+
+    const handleShareClick = (e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setIsCopied(true);
+        setTimeout(() => setIsCopied(false), 2500);
+
+        if (onCopyLink) {
+            onCopyLink(listing, e);
+        } else {
+            const shareUrl = `${window.location.origin}${window.location.pathname}?property=${encodeURIComponent(listing.id)}`;
+            if (navigator.clipboard) navigator.clipboard.writeText(shareUrl);
+        }
+    };
     const [lightboxOpen, setLightboxOpen] = useState(false);
     const [activeMediaIndex, setActiveMediaIndex] = useState(0);
 
@@ -88,8 +102,30 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                         <button className="btn-realtor-filter" style={{ padding: '6px 12px', fontSize: '0.82rem', borderRadius: '20px' }}>
                             <Compass size={14} /> Directions
                         </button>
-                        <button className="btn-realtor-filter" style={{ padding: '6px 12px', fontSize: '0.82rem', borderRadius: '20px' }}>
-                            <Share2 size={14} /> Share
+                        <button 
+                            className="btn-realtor-filter" 
+                            style={{ 
+                                padding: '6px 14px', 
+                                fontSize: '0.82rem', 
+                                borderRadius: '20px', 
+                                cursor: 'pointer',
+                                background: isCopied ? '#16a34a' : '#ffffff',
+                                color: isCopied ? '#ffffff' : '#0f172a',
+                                borderColor: isCopied ? '#16a34a' : '#cbd5e1',
+                                transition: 'all 0.2s ease'
+                            }}
+                            onClick={handleShareClick}
+                        >
+                            {isCopied ? (
+                                <>
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ffffff" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                                    ✓ Copied!
+                                </>
+                            ) : (
+                                <>
+                                    <Share2 size={14} /> Copy Share Link
+                                </>
+                            )}
                         </button>
                         <button 
                             onClick={onClose} 
