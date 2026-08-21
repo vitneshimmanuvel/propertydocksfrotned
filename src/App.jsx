@@ -935,8 +935,8 @@ export default function App() {
                     
                     {/* Logo Container */}
                     <div style={{
-                        padding: '16px 24px',
-                        borderRadius: '16px',
+                        padding: '16px 28px',
+                        borderRadius: '20px',
                         background: '#ffffff',
                         display: 'flex',
                         alignItems: 'center',
@@ -945,27 +945,16 @@ export default function App() {
                         border: `1.5px solid ${logoBorderColor}`,
                         zIndex: 2
                     }}>
-                        <PropertyDocksLogo width={180} height={50} />
+                        <PropertyDocksLogo height={70} />
                     </div>
                 </div>
 
-                <h1 style={{
-                    fontSize: '1.6rem',
-                    fontWeight: 800,
-                    letterSpacing: '1px',
-                    color: primaryColor,
-                    margin: '12px 0 4px 0',
-                    textTransform: 'uppercase'
-                }}>
-                    PROPERTY DOCKS
-                </h1>
-                
                 <h2 style={{
-                    fontSize: '0.88rem',
-                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    fontWeight: 700,
                     color: '#64748b',
-                    margin: 0,
-                    letterSpacing: '2px',
+                    margin: '16px 0 0 0',
+                    letterSpacing: '3px',
                     textTransform: 'uppercase'
                 }}>
                     Real Estate Portal
@@ -994,6 +983,7 @@ export default function App() {
                     showToast={showToast} 
                     role={role}
                     setRole={setRole}
+                    hideSubnav={true}
                 />
             )}
             

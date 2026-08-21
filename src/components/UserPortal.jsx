@@ -1206,6 +1206,8 @@ export default function UserPortal({
                                                         className="realtor-listing-card-img"
                                                         src={imgUrl} 
                                                         alt={loc.name}
+                                                        loading="lazy"
+                                                        decoding="async"
                                                         onError={(e) => { e.target.onerror = null; e.target.src = houseFallbacks[idx % 3]; }}
                                                     />
                                                     <button 
@@ -1736,7 +1738,7 @@ export default function UserPortal({
                                                 style={{ marginBottom: '12px', borderRadius: '8px', cursor: 'pointer' }}
                                             >
                                                 <div style={{ position: 'relative' }}>
-                                                    <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} />
+                                                    <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} loading="lazy" decoding="async" />
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
                                                     </button>
@@ -1818,7 +1820,7 @@ export default function UserPortal({
                                         {sortedDisplayLocations.length > 0 ? sortedDisplayLocations.map(loc => (
                                             <div key={loc.id} className="realtor-listing-card" style={{ borderRadius: '8px' }} onClick={() => setSelectedDetailListing(loc)}>
                                                 <div style={{ position: 'relative' }}>
-                                                    <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} />
+                                                    <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} loading="lazy" decoding="async" />
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
                                                     </button>

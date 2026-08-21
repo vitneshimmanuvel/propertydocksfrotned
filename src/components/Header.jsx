@@ -7,6 +7,7 @@ import {
     ShieldCheck,
     Phone
 } from 'lucide-react';
+import PropertyDocksLogo from './PropertyDocksLogo';
 
 export default function Header({ 
     theme, 
@@ -35,28 +36,17 @@ export default function Header({
         <header style={{ display: 'flex', flexDirection: 'column', padding: 0, height: 'auto', border: 'none' }}>
             {/* Top Red Header Bar (#921214) — Full Width */}
             <div className="realtor-header">
-                {/* Logo using exact Gemini image */}
+                {/* Official Vector Logo */}
                 <div 
                     className="realtor-logo-box" 
                     onClick={handleHomeClick} 
-                    style={{ background: '#ffffff', padding: '4px 14px', borderRadius: '6px', display: 'flex', alignItems: 'center', gap: '10px', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', cursor: 'pointer' }}
+                    style={{ background: '#ffffff', padding: '6px 14px', borderRadius: '6px', display: 'flex', alignItems: 'center', boxShadow: '0 2px 6px rgba(0,0,0,0.15)', cursor: 'pointer' }}
                 >
-                    <img 
-                        src="/Gemini_Generated_Image_jfbya2jfbya2jfby.png" 
-                        alt="Property Docks Logo" 
-                        style={{ height: '36px', width: 'auto', objectFit: 'contain' }} 
-                    />
-                    <span style={{ fontWeight: 900, fontSize: '1.2rem', color: '#921214', letterSpacing: '-0.5px', textTransform: 'uppercase', fontFamily: "'Outfit', 'Inter', sans-serif" }}>
-                        PROPERTY DOCkS
-                    </span>
+                    <PropertyDocksLogo height={36} />
                 </div>
 
 
                 <div className="realtor-top-actions">
-                    
-                    <button className="realtor-top-action-btn" onClick={() => showToast && showToast("Call Support: +91 98765 43210 for Legal Help", "info")}>
-                        <Phone size={14} style={{ background: 'rgba(255,255,255,0.2)', borderRadius: '50%', padding: '2px' }} /> Legal Support
-                    </button>
                     <div 
                         style={{ display: 'flex', alignItems: 'center', gap: '2px', cursor: 'pointer', fontSize: '0.78rem', fontWeight: 700 }}
                         onClick={() => setLanguage(prev => prev === 'EN' ? 'FR' : 'EN')}
