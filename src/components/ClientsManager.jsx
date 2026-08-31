@@ -993,13 +993,13 @@ export default function ClientsManager({
                             <div>
                                 {selectedTxnType === 'for_sale' ? (
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Sale Price (₹) <span style={{ color: '#ef4444' }}>*</span></label>
-                                        <input type="number" name="pPrice" defaultValue={editingProperty ? editingProperty.price : ''} placeholder="e.g. 4500000" required style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Sale Price (₹) (Optional)</label>
+                                        <input type="number" name="pPrice" defaultValue={editingProperty ? editingProperty.price : ''} placeholder="e.g. 4500000 (Optional)" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
                                     </div>
                                 ) : (
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Monthly Rent (₹) <span style={{ color: '#ef4444' }}>*</span></label>
-                                        <input type="number" name="pRent" defaultValue={editingProperty ? editingProperty.rentAmount : ''} placeholder="e.g. 15000" required style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Monthly Rent (₹) (Optional)</label>
+                                        <input type="number" name="pRent" defaultValue={editingProperty ? editingProperty.rentAmount : ''} placeholder="e.g. 15000 (Optional)" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
                                     </div>
                                 )}
                             </div>
@@ -1008,8 +1008,8 @@ export default function ClientsManager({
                             {propertyTypeTab === 'residential' ? (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Built-up Area (Sqft) <span style={{ color: '#ef4444' }}>*</span></label>
-                                        <input type="text" name="pSqft" defaultValue={editingProperty ? editingProperty.sqft : ''} placeholder="e.g. 1,500" required style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Built-up Area (Sqft) (Optional)</label>
+                                        <input type="text" name="pSqft" defaultValue={editingProperty ? editingProperty.sqft : ''} placeholder="e.g. 1,500 (Optional)" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Bedrooms</label>
@@ -1023,8 +1023,8 @@ export default function ClientsManager({
                             ) : (
                                 <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px' }}>
                                     <div>
-                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Building Size (Sqft) <span style={{ color: '#ef4444' }}>*</span></label>
-                                        <input type="text" name="pSqft" defaultValue={editingProperty ? editingProperty.sqft : ''} placeholder="e.g. 4,500" required style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Building Size (Sqft) (Optional)</label>
+                                        <input type="text" name="pSqft" defaultValue={editingProperty ? editingProperty.sqft : ''} placeholder="e.g. 4,500 (Optional)" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
                                     </div>
                                     <div>
                                         <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Land Area (Sqft / Acres)</label>

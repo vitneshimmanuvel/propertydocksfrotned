@@ -620,22 +620,22 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                 {/* Price Fields — Conditional based on transaction type */}
                                 {formData.transactionType === 'for_sale' && (
                                     <div className="form-group">
-                                        <label>Sale Price (₹) <span style={{color: '#ef4444'}}>*</span></label>
-                                        <input type="number" name="price" value={formData.price} onChange={handleInputChange} placeholder="e.g. 4500000" required />
+                                        <label>Sale Price (₹) (Optional)</label>
+                                        <input type="number" name="price" value={formData.price} onChange={handleInputChange} placeholder="e.g. 4500000 (Optional)" />
                                     </div>
                                 )}
 
                                 {formData.transactionType === 'for_rent' && (
                                     <div className="form-group">
-                                        <label>Monthly Rent (₹) <span style={{color: '#ef4444'}}>*</span></label>
-                                        <input type="number" name="rentAmount" value={formData.rentAmount} onChange={handleInputChange} placeholder="e.g. 15000" required />
+                                        <label>Monthly Rent (₹) (Optional)</label>
+                                        <input type="number" name="rentAmount" value={formData.rentAmount} onChange={handleInputChange} placeholder="e.g. 15000 (Optional)" />
                                     </div>
                                 )}
 
                                 {formData.transactionType === 'lease' && (
                                     <div className="form-row">
-                                        <div className="form-group"><label>Lease/Bogithu Amount (₹)</label><input type="number" name="bogithuAmount" value={formData.bogithuAmount} onChange={handleInputChange} required /></div>
-                                        <div className="form-group"><label>Duration (Years)</label><input type="number" name="bogithuYears" value={formData.bogithuYears} onChange={handleInputChange} required /></div>
+                                        <div className="form-group"><label>Lease/Bogithu Amount (₹) (Optional)</label><input type="number" name="bogithuAmount" value={formData.bogithuAmount} onChange={handleInputChange} placeholder="Optional" /></div>
+                                        <div className="form-group"><label>Duration (Years)</label><input type="number" name="bogithuYears" value={formData.bogithuYears} onChange={handleInputChange} placeholder="Optional" /></div>
                                     </div>
                                 )}
 
