@@ -184,15 +184,12 @@ export default function ClientsManager({
             return;
         }
 
-        if (!email) {
-            if (showToast) showToast("Email Address is required", "warning");
-            return;
-        }
-
-        const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-        if (!emailRegex.test(email)) {
-            if (showToast) showToast("Please enter a valid email address (e.g. name@domain.com)", "error");
-            return;
+        if (email) {
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+            if (!emailRegex.test(email)) {
+                if (showToast) showToast("Please enter a valid email address (e.g. name@domain.com)", "error");
+                return;
+            }
         }
 
         setIsSavingClient(true);
@@ -811,14 +808,13 @@ export default function ClientsManager({
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Email Address <span style={{ color: '#ef4444' }}>*</span></label>
+                                <label style={{ display: 'block', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Email Address (Optional)</label>
                                 <input 
                                     type="email" 
                                     name="clientEmail" 
                                     value={clientEmailVal} 
                                     onChange={(e) => setClientEmailVal(e.target.value.trim())}
-                                    placeholder="anand@example.com" 
-                                    required
+                                    placeholder="anand@example.com (Optional)" 
                                     style={{ width: '100%', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', outline: 'none' }} 
                                 />
                             </div>

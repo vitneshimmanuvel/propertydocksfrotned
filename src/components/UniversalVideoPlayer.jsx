@@ -1,16 +1,22 @@
-import React from 'react';
+import React, { useState } from 'react';
 
-export function getYouTubeEmbedUrl(url) {
+export function getYouTubeEmbedUrl(url, autoPlay = false) {
     if (!url) return null;
-    const regExp = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|shorts\/|watch\?v=|\&v=)([^#\&\?]*).*/;
+    const regExp = /(?:youtube\.com\/(?:[^\/]+\/.+\/|(?:v|e(?:mbed)?|shorts)\/|.*[?&]v=)|youtu\.be\/)([^"&?\/\s]{11})/;
     const match = url.match(regExp);
-    return (match && match[2].length === 11) ? `https://www.youtube.com/embed/${match[2]}?autoplay=1&mute=1&rel=0` : null;
+    if (!match || !match[1]) return null;
+
+    const videoId = match[1];
+    const autoPlayParam = autoPlay ? 'autoplay=1&mute=1' : 'autoplay=0';
+    return `https://www.youtube.com/embed/${videoId}?${autoPlayParam}&rel=0&modestbranding=1`;
 }
 
-export function getVimeoEmbedUrl(url) {
+export function getVimeoEmbedUrl(url, autoPlay = false) {
     if (!url) return null;
     const match = url.match(/vimeo\.com\/(?:.*\/)?([0-9]+)/);
-    return match ? `https://player.vimeo.com/video/${match[1]}?autoplay=1&muted=1` : null;
+    if (!match || !match[1]) return null;
+    const autoPlayParam = autoPlay ? 'autoplay=1&muted=1' : 'autoplay=0';
+    return `https://player.vimeo.com/video/${match[1]}?${autoPlayParam}`;
 }
 
 export function getGoogleDriveEmbedUrl(url) {
@@ -31,6 +37,8 @@ export default function UniversalVideoPlayer({
     className = "",
     preload = "none"
 }) {
+    const [hasError, setHasError] = useState(false);
+
     if (!url) return null;
 
     // Handle relative uploads URLs (e.g., /uploads/video.mp4)
@@ -38,7 +46,7 @@ export default function UniversalVideoPlayer({
         ? `http://localhost:5000/${url.replace(/^\//, '')}`
         : url;
 
-    const ytUrl = getYouTubeEmbedUrl(normalizedUrl);
+    const ytUrl = getYouTubeEmbedUrl(normalizedUrl, autoPlay);
     if (ytUrl) {
         return (
             <iframe 
@@ -53,7 +61,7 @@ export default function UniversalVideoPlayer({
         );
     }
 
-    const vimeoUrl = getVimeoEmbedUrl(normalizedUrl);
+    const vimeoUrl = getVimeoEmbedUrl(normalizedUrl, autoPlay);
     if (vimeoUrl) {
         return (
             <iframe 
@@ -83,7 +91,21 @@ export default function UniversalVideoPlayer({
         );
     }
 
-    // Direct MP4 / WebM / HTML5 Video
+    // Direct MP4 / WebM / HTML5 Video with error fallback
+    if (hasError) {
+        return (
+            <iframe 
+                src="https://www.youtube.com/embed/7X8II6J-6mU?autoplay=0&rel=0" 
+                title="Property Video Tour Fallback" 
+                className={className}
+                loading="lazy"
+                style={{ width: '100%', height: '100%', border: 'none', borderRadius: '8px', minHeight: '180px', ...style }} 
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
+                allowFullScreen 
+            />
+        );
+    }
+
     return (
         <video 
             src={normalizedUrl} 
@@ -93,6 +115,7 @@ export default function UniversalVideoPlayer({
             loop={loop}
             playsInline 
             preload={preload}
+            onError={() => setHasError(true)}
             className={className}
             style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '8px', ...style }} 
         />
