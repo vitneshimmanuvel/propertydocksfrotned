@@ -63,10 +63,13 @@ export default function ReportsManager({
 
         const ownerList = Object.values(ownerSummaryMap);
 
+        const totalViews = ownerListings.reduce((sum, l) => sum + (Number(l.viewsCount || l.views || 0)), 0);
+
         return {
             totalProperties,
             activeCount,
             disabledCount,
+            totalViews,
             residentialCount: residentialListings.length,
             commercialCount: commercialListings.length,
             totalOwners: clients.length,
@@ -82,7 +85,7 @@ export default function ReportsManager({
             return;
         }
 
-        const headers = ["Property ID", "Title", "Owner Name", "Owner Phone", "Category", "Location", "Price/Rent", "Status", "Created At"];
+        const headers = ["Property ID", "Title", "Owner Name", "Owner Phone", "Category", "Location", "Price/Rent", "Total Clicks/Views", "Status", "Created At"];
         const rows = ownerListings.map(l => [
             `"${l.id}"`,
             `"${(l.title || '').replace(/"/g, '""')}"`,
@@ -91,6 +94,7 @@ export default function ReportsManager({
             `"${l.category || 'residential'}"`,
             `"${(l.location || '').replace(/"/g, '""')}"`,
             `"${l.price || l.rentAmount || l.bogithuAmount || 0}"`,
+            `"${l.viewsCount || l.views || 0}"`,
             `"${l.status || 'available'}"`,
             `"${l.createdAt || l.created_at || ''}"`
         ]);

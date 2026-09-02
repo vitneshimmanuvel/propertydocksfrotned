@@ -151,6 +151,29 @@ export async function uploadVideo(file) {
     return response.json();
 }
 
+// --- Property Views & Clicks Tracking ---
+export async function recordPropertyView(id) {
+    if (!id) return;
+    try {
+        return await apiRequest(`/listings/${encodeURIComponent(id)}/view`, {
+            method: 'POST'
+        });
+    } catch (err) {
+        console.warn('Track view error (offline/silent):', err.message);
+    }
+}
+
+export async function recordPropertyClick(id) {
+    if (!id) return;
+    try {
+        return await apiRequest(`/listings/${encodeURIComponent(id)}/click`, {
+            method: 'POST'
+        });
+    } catch (err) {
+        console.warn('Track click error (offline/silent):', err.message);
+    }
+}
+
 // --- Health Check ---
 export async function checkHealth() {
     return apiRequest('/health');

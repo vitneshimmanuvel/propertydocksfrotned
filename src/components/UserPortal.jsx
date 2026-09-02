@@ -40,7 +40,7 @@ import GlobalMap from './GlobalMap';
 import AdvancedFilterModal from './AdvancedFilterModal';
 import PropertyDetailModal from './PropertyDetailModal';
 import { useJsApiLoader } from '@react-google-maps/api';
-import { saveFullDatabase } from '../utils/api';
+import { saveFullDatabase, recordPropertyClick, recordPropertyView } from '../utils/api';
 import { auth } from '../utils/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 
@@ -107,6 +107,29 @@ export default function UserPortal({
 
     const [isAdvancedFilterOpen, setIsAdvancedFilterOpen] = useState(false);
     const [selectedDetailListing, setSelectedDetailListing] = useState(null);
+
+    // Track every click / view on each property card & update database counters
+    const handleOpenPropertyDetails = useCallback((loc) => {
+        if (!loc) return;
+        setSelectedDetailListing(loc);
+        if (loc.id) {
+            setDatabase(prev => {
+                if (!prev || !prev.ownerListings) return prev;
+                const updated = prev.ownerListings.map(l => {
+                    if (l.id === loc.id) {
+                        return {
+                            ...l,
+                            viewsCount: (Number(l.viewsCount || l.views || 0) + 1),
+                            clicksCount: (Number(l.clicksCount || l.clicks || 0) + 1)
+                        };
+                    }
+                    return l;
+                });
+                return { ...prev, ownerListings: updated };
+            });
+            recordPropertyClick(loc.id);
+        }
+    }, [setDatabase]);
     const [advancedFilters, setAdvancedFilters] = useState({
         tab: 'residential',
         transactionType: 'all',
@@ -1274,8 +1297,8 @@ export default function UserPortal({
                                                 key={loc.id || idx} 
                                                 className="realtor-listing-card"
                                                 style={{ borderRadius: '8px', cursor: 'pointer' }}
-                                                onClick={() => setSelectedDetailListing(loc)}
-                                                onDoubleClick={() => setSelectedDetailListing(loc)}
+                                                onClick={() => handleOpenPropertyDetails(loc)}
+                                                onDoubleClick={() => handleOpenPropertyDetails(loc)}
                                             >
                                                 <div style={{ position: 'relative' }}>
                                                     <img 
@@ -1842,10 +1865,10 @@ export default function UserPortal({
                                                 onClick={() => {
                                                     setFocusedLocation(loc);
                                                     if (isMobileView) {
-                                                        setSelectedDetailListing(loc);
+                                                        handleOpenPropertyDetails(loc);
                                                     }
                                                 }} 
-                                                onDoubleClick={() => setSelectedDetailListing(loc)}
+                                                onDoubleClick={() => handleOpenPropertyDetails(loc)}
                                                 style={{ marginBottom: '12px', borderRadius: '8px', cursor: 'pointer' }}
                                             >
                                                 <div style={{ position: 'relative' }}>
@@ -1920,7 +1943,7 @@ export default function UserPortal({
                                             isFavorite={isFavorite}
                                             onToggleFavorite={toggleFavorite}
                                             onContactOwner={(loc) => { setSelectedContactListing(loc); setContactModalOpen(true); }}
-                                            onSelectDetail={(loc) => setSelectedDetailListing(loc)}
+                                            onSelectDetail={(loc) => handleOpenPropertyDetails(loc)}
                                             onCopyLink={handleCopyPropertyLink}
                                             onShowAllProperties={() => {
                                                 clearSearch();
@@ -1944,8 +1967,8 @@ export default function UserPortal({
                                                 key={loc.id} 
                                                 className="realtor-listing-card" 
                                                 style={{ borderRadius: '8px', cursor: 'pointer' }} 
-                                                onClick={() => setSelectedDetailListing(loc)}
-                                                onDoubleClick={() => setSelectedDetailListing(loc)}
+                                                onClick={() => handleOpenPropertyDetails(loc)}
+                                                onDoubleClick={() => handleOpenPropertyDetails(loc)}
                                             >
                                                 <div style={{ position: 'relative' }}>
                                                     <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} loading="lazy" decoding="async" />

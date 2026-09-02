@@ -19,6 +19,7 @@ export default function DashboardManager({
 
         const commercialCount = ownerListings.filter(l => COMMERCIAL_CATS.some(c => (l.category || '').toLowerCase().includes(c))).length;
         const residentialCount = totalProperties - commercialCount;
+        const totalViewsCount = ownerListings.reduce((sum, l) => sum + (Number(l.viewsCount || l.views || 0)), 0);
 
         // Unique property owners count across clients table and listings table
         const ownerPhones = new Set();
@@ -35,7 +36,8 @@ export default function DashboardManager({
             disabledListings,
             totalOwnersCount,
             residentialCount,
-            commercialCount
+            commercialCount,
+            totalViewsCount
         };
     }, [ownerListings, clients]);
 
@@ -127,6 +129,18 @@ export default function DashboardManager({
                     <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Property Owner Contacts</span>
                 </div>
 
+                {/* Total Property Views / Clicks KPI */}
+                <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Clicks / Views</span>
+                        <div style={{ padding: '6px', borderRadius: '4px', background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7' }}>
+                            <Eye size={16} />
+                        </div>
+                    </div>
+                    <div style={{ fontSize: '1.8rem', fontWeight: 800, color: '#0284c7' }}>{stats.totalViewsCount.toLocaleString('en-IN')}</div>
+                    <span style={{ fontSize: '0.7rem', color: 'var(--text-muted)' }}>Customer Card Views & Clicks</span>
+                </div>
+
                 {/* Residential vs Commercial Split */}
                 <div className="metric-card" style={{ padding: '20px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)', display: 'flex', flexDirection: 'column', gap: '8px' }}>
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
@@ -169,6 +183,7 @@ export default function DashboardManager({
                                     <th style={{ padding: '12px 10px' }}>Category</th>
                                     <th style={{ padding: '12px 10px' }}>Location</th>
                                     <th style={{ padding: '12px 10px' }}>Price / Rent</th>
+                                    <th style={{ padding: '12px 10px' }}>Clicks / Views</th>
                                     <th style={{ padding: '12px 10px' }}>Public Status</th>
                                 </tr>
                             </thead>
@@ -196,6 +211,11 @@ export default function DashboardManager({
                                             </td>
                                             <td style={{ padding: '12px 10px', fontWeight: 800, color: '#921214' }}>
                                                 {formatPropertyPrice(l)}
+                                            </td>
+                                            <td style={{ padding: '12px 10px' }}>
+                                                <span style={{ fontSize: '0.74rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                    <Eye size={12} /> {Number(l.viewsCount || l.views || 0)}
+                                                </span>
                                             </td>
                                             <td style={{ padding: '12px 10px' }}>
                                                 <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '3px 10px', borderRadius: '12px', background: statusAvailable ? 'rgba(34,197,94,0.12)' : 'rgba(239,68,68,0.12)', color: statusAvailable ? '#22c55e' : '#ef4444' }}>

@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Users, Search, Phone, Mail, Landmark, Plus, X, Edit2, Trash2, MapPin, UserPlus, Home, Building, Upload, Link as LinkIcon, FileText, Navigation, Crosshair } from 'lucide-react';
+import { Users, Search, Phone, Mail, Landmark, Plus, X, Edit2, Trash2, MapPin, UserPlus, Home, Building, Upload, Link as LinkIcon, FileText, Navigation, Crosshair, Eye, BarChart2, TrendingUp } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { saveFullDatabase, uploadImage, uploadVideo } from '../utils/api';
 
@@ -595,11 +595,34 @@ export default function ClientsManager({
             </div>
 
             {/* Metrics block */}
-            <div style={{ maxWidth: '260px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', width: '100%' }}>
                 <div className="metric-card" style={{ padding: '16px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
-                    <h3 style={{ fontSize: '0.72rem', color: 'var(--text-secondary)' }}>Total Property Owners</h3>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Property Owners</h3>
+                        <Users size={16} color="var(--primary)" />
+                    </div>
                     <div className="metric-value" style={{ fontSize: '1.8rem', marginTop: '6px', fontWeight: 800, color: 'var(--text-primary)' }}>{clients.length}</div>
                     <span className="metric-sub" style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Registered Property Owners</span>
+                </div>
+
+                <div className="metric-card" style={{ padding: '16px', background: 'var(--bg-panel)', border: '1px solid var(--border-color)', borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ fontSize: '0.72rem', color: 'var(--text-secondary)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Total Listed Properties</h3>
+                        <Landmark size={16} color="#921214" />
+                    </div>
+                    <div className="metric-value" style={{ fontSize: '1.8rem', marginTop: '6px', fontWeight: 800, color: '#921214' }}>{(database.ownerListings || []).length}</div>
+                    <span className="metric-sub" style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Properties Managed</span>
+                </div>
+
+                <div className="metric-card" style={{ padding: '16px', background: 'var(--bg-panel)', border: '1px solid rgba(2, 132, 199, 0.3)', borderRadius: 'var(--radius-md)' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <h3 style={{ fontSize: '0.72rem', color: '#0284c7', textTransform: 'uppercase', letterSpacing: '0.5px', fontWeight: 700 }}>Total Property Clicks / Views</h3>
+                        <Eye size={18} color="#0284c7" />
+                    </div>
+                    <div className="metric-value" style={{ fontSize: '1.8rem', marginTop: '6px', fontWeight: 800, color: '#0284c7' }}>
+                        {(database.ownerListings || []).reduce((acc, l) => acc + (Number(l.viewsCount || l.views || 0)), 0).toLocaleString('en-IN')}
+                    </div>
+                    <span className="metric-sub" style={{ color: 'var(--text-muted)', fontSize: '0.7rem' }}>Total User Card Clicks & Views</span>
                 </div>
             </div>
 
@@ -634,7 +657,7 @@ export default function ClientsManager({
                                 <th style={{ padding: '14px 16px' }}>Alternative Mobile</th>
                                 <th style={{ padding: '14px 16px' }}>Email Address</th>
                                 <th style={{ padding: '14px 16px' }}>Location / Address</th>
-                                <th style={{ padding: '14px 16px' }}>Properties</th>
+                                <th style={{ padding: '14px 16px' }}>Properties & Views</th>
                                 <th style={{ padding: '14px 16px', textAlign: 'right' }}>Actions</th>
                             </tr>
                         </thead>
@@ -645,6 +668,8 @@ export default function ClientsManager({
                                     const clientPhoneCore = getCorePhone(client.phone);
                                     return listingPhoneCore && clientPhoneCore && listingPhoneCore === clientPhoneCore;
                                 });
+
+                                const totalOwnerClicks = ownerListings.reduce((sum, l) => sum + (Number(l.viewsCount || l.views || 0)), 0);
 
                                 return (
                                     <tr key={client.id || client.phone} style={{ borderBottom: '1px solid var(--border-color)', transition: 'background 0.15s ease' }}>
@@ -705,11 +730,16 @@ export default function ClientsManager({
                                             )}
                                         </td>
 
-                                        {/* Properties Count Badge */}
+                                        {/* Properties & Views Badge */}
                                         <td style={{ padding: '14px 16px' }}>
-                                            <span style={{ fontSize: '0.78rem', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', background: ownerListings.length > 0 ? 'rgba(146, 18, 20, 0.12)' : 'var(--bg-main)', color: ownerListings.length > 0 ? '#921214' : 'var(--text-muted)', border: ownerListings.length > 0 ? '1px solid rgba(146, 18, 20, 0.3)' : '1px solid var(--border-color)', whiteSpace: 'nowrap' }}>
-                                                {ownerListings.length} {ownerListings.length === 1 ? 'Property' : 'Properties'}
-                                            </span>
+                                            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                                <span style={{ fontSize: '0.78rem', fontWeight: 800, padding: '3px 10px', borderRadius: '12px', background: ownerListings.length > 0 ? 'rgba(146, 18, 20, 0.12)' : 'var(--bg-main)', color: ownerListings.length > 0 ? '#921214' : 'var(--text-muted)', border: ownerListings.length > 0 ? '1px solid rgba(146, 18, 20, 0.3)' : '1px solid var(--border-color)', whiteSpace: 'nowrap', width: 'fit-content' }}>
+                                                    {ownerListings.length} {ownerListings.length === 1 ? 'Property' : 'Properties'}
+                                                </span>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: 'rgba(2, 132, 199, 0.1)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.25)', whiteSpace: 'nowrap', width: 'fit-content', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                    <Eye size={12} /> {totalOwnerClicks} {totalOwnerClicks === 1 ? 'View' : 'Views'}
+                                                </span>
+                                            </div>
                                         </td>
 
                                         {/* Actions */}
@@ -854,9 +884,14 @@ export default function ClientsManager({
                                             <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                                                 📍 {listing.location || 'Location'} • {listing.category.toUpperCase().replace('_', ' ')}
                                             </span>
-                                            <span style={{ fontSize: '0.78rem', fontWeight: 800, color: '#921214' }}>
-                                                {listing.price ? `₹${Number(listing.price).toLocaleString('en-IN')}` : (listing.rentAmount ? `₹${Number(listing.rentAmount).toLocaleString('en-IN')}/m` : '—')}
-                                            </span>
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#921214' }}>
+                                                    {listing.price ? `₹${Number(listing.price).toLocaleString('en-IN')}` : (listing.rentAmount ? `₹${Number(listing.rentAmount).toLocaleString('en-IN')}/m` : '—')}
+                                                </span>
+                                                <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                    <Eye size={12} /> {Number(listing.viewsCount || listing.views || 0)} Views / Clicks
+                                                </span>
+                                            </div>
                                         </div>
 
                                         {/* Property Actions */}

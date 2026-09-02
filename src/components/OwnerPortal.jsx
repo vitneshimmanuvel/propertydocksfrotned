@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Home, PlusCircle, List, MapPin, MessageSquare, Phone, Calendar, Mail, Edit2, Trash2, Map, ShieldCheck, LogOut } from 'lucide-react';
+import { Home, PlusCircle, List, MapPin, MessageSquare, Phone, Calendar, Mail, Edit2, Trash2, Map, ShieldCheck, LogOut, Eye } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { saveFullDatabase } from '../utils/api';
 
@@ -893,6 +893,9 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                                     <h3 style={{ fontSize: '1.1rem', fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>{prop.title}</h3>
                                                     <span className={`status-indicator status-${prop.category}`}>{prop.category.replace('_', ' ')}</span>
                                                     <span className="status-indicator" style={{ background: 'rgba(255,255,255,0.1)' }}>{prop.status.replace('_', ' ')}</span>
+                                                    <span className="status-indicator" style={{ background: 'rgba(2, 132, 199, 0.15)', color: '#0284c7', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
+                                                        <Eye size={13} /> {Number(prop.viewsCount || prop.views || 0)} Views
+                                                    </span>
                                                     {prop.media && prop.media.length > 0 && (
                                                         <span className="status-indicator" style={{ background: 'rgba(16, 185, 129, 0.15)', color: '#10b981' }}>
                                                             {prop.media.length} Media File{prop.media.length !== 1 ? 's' : ''}
