@@ -134,6 +134,7 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
     const [mapCenter, setMapCenter] = useState(defaultCenter);
     const [mapZoom, setMapZoom] = useState(4);
     const [editingId, setEditingId] = useState(null);
+    const [isSubmitting, setIsSubmitting] = useState(false);
     const [adminSearchQuery, setAdminSearchQuery] = useState('');
     const [adminCategoryFilter, setAdminCategoryFilter] = useState('all');
     const [inquirySearchQuery, setInquirySearchQuery] = useState('');
@@ -313,6 +314,7 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        if (isSubmitting) return;
         
         if (!formData.lat || !formData.lng) {
             showToast("Please pin the location on the map.", "warning");
@@ -324,6 +326,7 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
             return;
         }
 
+        setIsSubmitting(true);
         const newDatabase = { ...database };
         if (!newDatabase.ownerListings) {
             newDatabase.ownerListings = [];
@@ -345,7 +348,7 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
             });
         } else {
             const newListing = {
-                id: 'listing_' + Date.now(),
+                id: 'listing_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                 ...formData,
                 status: 'available',
                 createdAt: new Date().toISOString(),
@@ -393,6 +396,8 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
         } catch (err) {
             console.error(err);
             showToast("Failed to save property. Please try again.", "error");
+        } finally {
+            setIsSubmitting(false);
         }
     };
 
@@ -407,7 +412,8 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
             title: v.name || v.title || 'Verified Property Listing',
             category: v.category || 'rental_house',
             status: v.status || 'available',
-            rentAmount: v.price || 4500000,
+            rentAmount: v.rentAmount || null,
+            price: v.price || null,
             location: `${v.district || 'Erode'}, Tamil Nadu`,
             street: v.displayAddress || '',
             contactName: v.contactName || 'Property Representative',
@@ -790,8 +796,8 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                         {uploading && <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>Uploading...</span>}
                                     </div>
                                 </div>
-                                <button type="submit" className="btn-primary" style={{ marginTop: 'auto', padding: '14px', fontSize: '1.1rem' }} disabled={uploading}>
-                                    {uploading ? 'Uploading...' : 'Post Property to Map'}
+                                <button type="submit" className="btn-primary" style={{ marginTop: 'auto', padding: '14px', fontSize: '1.1rem' }} disabled={uploading || isSubmitting}>
+                                    {uploading ? 'Uploading Media...' : isSubmitting ? 'Posting Property...' : (editingId ? 'Save Changes' : 'Post Property to Map')}
                                 </button>
                             </div>
                         </form>
@@ -908,7 +914,9 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                                     )}
                                                 </div>
                                                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>
-                                                    {prop.category === 'bogithu' ? `₹${Number(prop.bogithuAmount).toLocaleString('en-IN')} for ${prop.bogithuYears} Years` : `₹${Number(prop.rentAmount || prop.price || 4500000).toLocaleString('en-IN')}`}
+                                                    {prop.category === 'bogithu' 
+                                                        ? (prop.bogithuAmount ? `₹${Number(prop.bogithuAmount).toLocaleString('en-IN')}${prop.bogithuYears ? ` for ${prop.bogithuYears} Years` : ''} (Lease)` : 'Price on Request')
+                                                        : (prop.rentAmount ? `₹${Number(prop.rentAmount).toLocaleString('en-IN')} / mo` : (prop.price ? `₹${Number(prop.price).toLocaleString('en-IN')}` : 'Price on Request'))}
                                                 </div>
                                             </div>
 

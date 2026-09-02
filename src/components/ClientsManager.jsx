@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef } from 'react';
-import { Users, Search, Phone, Mail, Landmark, Plus, X, Edit2, Trash2, MapPin, UserPlus, Home, Building, Upload, Link as LinkIcon, FileText } from 'lucide-react';
+import { Users, Search, Phone, Mail, Landmark, Plus, X, Edit2, Trash2, MapPin, UserPlus, Home, Building, Upload, Link as LinkIcon, FileText, Navigation, Crosshair } from 'lucide-react';
 import { GoogleMap, useJsApiLoader, Marker } from '@react-google-maps/api';
 import { saveFullDatabase, uploadImage, uploadVideo } from '../utils/api';
 
@@ -32,6 +32,7 @@ export default function ClientsManager({
     const [clientAddressVal, setClientAddressVal] = useState('');
     const [clientNotesVal, setClientNotesVal] = useState('');
     const [isSavingClient, setIsSavingClient] = useState(false);
+    const [deletingClientId, setDeletingClientId] = useState(null);
 
     // Property uploader modal states
     const [isPropertyModalOpen, setIsPropertyModalOpen] = useState(false);
@@ -40,14 +41,19 @@ export default function ClientsManager({
     const [propertyTypeTab, setPropertyTypeTab] = useState('residential');
     const [selectedCategory, setSelectedCategory] = useState('residential');
     const [selectedTxnType, setSelectedTxnType] = useState('for_sale');
+    const [isSavingProperty, setIsSavingProperty] = useState(false);
+    const [deletingPropertyId, setDeletingPropertyId] = useState(null);
     
     // Lat / Lng inputs state
     const [latInputVal, setLatInputVal] = useState('');
     const [lngInputVal, setLngInputVal] = useState('');
 
-    // Interactive Map Picker modal states
+    // Interactive Map Picker modal states & search
     const [isMapPickerOpen, setIsMapPickerOpen] = useState(false);
     const [pickerCoords, setPickerCoords] = useState({ lat: 11.3410, lng: 77.7172 });
+    const [mapSearchText, setMapSearchText] = useState('');
+    const [isSearchingLocation, setIsSearchingLocation] = useState(false);
+    const mapInstanceRef = useRef(null);
 
     // Media management states
     const [mediaItemsList, setMediaItemsList] = useState([]);
@@ -162,6 +168,8 @@ export default function ClientsManager({
     // Save Client handler
     const handleSaveClient = async (e) => {
         e.preventDefault();
+        if (isSavingClient) return;
+
         const name = clientNameVal.trim();
         const phone = clientPhoneVal.trim();
         const alternatePhone = clientAltPhoneVal.trim();
@@ -214,7 +222,7 @@ export default function ClientsManager({
             });
         } else {
             const newClient = {
-                id: 'client_' + Date.now(),
+                id: 'client_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                 name,
                 phone,
                 alternatePhone: alternatePhone === '+91' ? '' : alternatePhone,
@@ -240,18 +248,56 @@ export default function ClientsManager({
         }
     };
 
-    // Delete Client handler
+    // Delete Client handler with Cascade Deletion of all listed properties
     const handleDeleteClient = async (client) => {
-        if (!window.confirm(`Are you sure you want to remove property owner "${client.name}"?`)) return;
+        if (!client || deletingClientId) return;
+        const clientCore = getCorePhone(client.phone);
+        const associatedListings = (database.ownerListings || []).filter(l => {
+            const lPhoneCore = getCorePhone(l.contactPhone || l.ownerPhone);
+            return (clientCore && lPhoneCore && clientCore === lPhoneCore) || 
+                   l.contactPhone === client.phone || 
+                   l.ownerPhone === client.phone;
+        });
+
+        const confirmMsg = associatedListings.length > 0
+            ? `Are you sure you want to delete property owner "${client.name}"?\n\n⚠️ This will permanently delete the owner and all ${associatedListings.length} property listing(s) listed under them.`
+            : `Are you sure you want to delete property owner "${client.name}"?`;
+
+        if (!window.confirm(confirmMsg)) return;
+
+        setDeletingClientId(client.id || client.phone);
         const newDb = { ...database };
-        newDb.clients = (newDb.clients || []).filter(c => c.id !== client.id && c.phone !== client.phone);
+
+        // 1. Remove from clients table
+        newDb.clients = (newDb.clients || []).filter(c => {
+            const cCore = getCorePhone(c.phone);
+            const isMatch = (client.id && c.id === client.id) || 
+                            (client.phone && c.phone === client.phone) || 
+                            (clientCore && cCore && clientCore === cCore);
+            return !isMatch;
+        });
+
+        // 2. Cascade delete all ownerListings belonging to this owner
+        newDb.ownerListings = (newDb.ownerListings || []).filter(l => {
+            const lPhoneCore = getCorePhone(l.contactPhone || l.ownerPhone);
+            const isMatch = (clientCore && lPhoneCore && clientCore === lPhoneCore) || 
+                            l.contactPhone === client.phone || 
+                            l.ownerPhone === client.phone;
+            return !isMatch;
+        });
+
         try {
             if (setDatabase) setDatabase(newDb);
             await saveFullDatabase(newDb);
-            if (showToast) showToast("Property Owner removed successfully", "success");
+            if (showToast) showToast(associatedListings.length > 0 ? `Property Owner and all ${associatedListings.length} properties deleted successfully` : "Property Owner deleted successfully", "success");
+            if (selectedOwnerForPropertiesModal && (selectedOwnerForPropertiesModal.id === client.id || selectedOwnerForPropertiesModal.phone === client.phone)) {
+                setSelectedOwnerForPropertiesModal(null);
+            }
         } catch (err) {
             console.error(err);
             if (showToast) showToast("Failed to remove property owner", "error");
+        } finally {
+            setDeletingClientId(null);
         }
     };
 
@@ -321,7 +367,10 @@ export default function ClientsManager({
     };
 
     const handleDeleteProperty = async (listing) => {
+        if (!listing || !listing.id || deletingPropertyId) return;
         if (!window.confirm(`Are you sure you want to delete property "${listing.title}"?`)) return;
+        
+        setDeletingPropertyId(listing.id);
         const newDb = { ...database };
         newDb.ownerListings = (newDb.ownerListings || []).filter(o => o.id !== listing.id);
         
@@ -332,11 +381,15 @@ export default function ClientsManager({
         } catch (e) {
             console.error(e);
             if (showToast) showToast("Failed to delete property listing", "error");
+        } finally {
+            setDeletingPropertyId(null);
         }
     };
 
     const handleSaveProperty = async (e) => {
         e.preventDefault();
+        if (isSavingProperty) return; // Prevent concurrent/multiple duplicate submissions
+
         const form = e.target;
         
         const title = form.pTitle.value.trim();
@@ -345,7 +398,7 @@ export default function ClientsManager({
         const price = selectedTxnType === 'for_sale' ? (parseFloat(form.pPrice?.value) || 0) : 0;
         const rentAmount = selectedTxnType === 'for_rent' ? (parseFloat(form.pRent?.value) || 0) : 0;
         const bogithuAmount = 0;
-        const sqft = form.pSqft.value.trim();
+        const sqft = form.pSqft?.value ? form.pSqft.value.trim() : '';
         const landArea = form.pLandArea ? form.pLandArea.value.trim() : '';
         const beds = parseInt(form.pBeds?.value || 0, 10);
         const baths = parseInt(form.pBaths?.value || 0, 10);
@@ -371,8 +424,10 @@ export default function ClientsManager({
             return;
         }
 
+        setIsSavingProperty(true);
+
         const newDb = { ...database };
-        newDb.ownerListings = newDb.ownerListings || [];
+        newDb.ownerListings = [...(newDb.ownerListings || [])];
 
         if (editingProperty) {
             newDb.ownerListings = newDb.ownerListings.map(o => {
@@ -390,15 +445,15 @@ export default function ClientsManager({
             });
         } else {
             const newProperty = {
-                id: 'prop_' + Date.now(),
+                id: 'prop_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
                 title, category, transactionType, price, rentAmount, bogithuAmount, sqft, landArea, beds, baths, floors,
                 location, street, landmark, pincode, locationPrivacy, description, lat, lng, status, 
                 media: mediaItemsList,
                 internalDocuments: internalDocsList,
-                contactName: selectedClientForProperty.name,
-                contactPhone: selectedClientForProperty.phone,
-                ownerPhone: selectedClientForProperty.phone,
-                ownerEmail: selectedClientForProperty.email,
+                contactName: selectedClientForProperty?.name || '',
+                contactPhone: selectedClientForProperty?.phone || '',
+                ownerPhone: selectedClientForProperty?.phone || '',
+                ownerEmail: selectedClientForProperty?.email || '',
                 isFreeUpload: true,
                 feePaid: 0,
                 createdAt: new Date().toISOString()
@@ -415,7 +470,95 @@ export default function ClientsManager({
         } catch (err) {
             console.error(err);
             if (showToast) showToast("Failed to save property listing", "error");
+        } finally {
+            setIsSavingProperty(false);
         }
+    };
+
+    // Geocoding & Map Location Finding
+    const handleLocationSearch = (searchQueryInput) => {
+        const query = (typeof searchQueryInput === 'string' ? searchQueryInput : mapSearchText).trim();
+        if (!query) {
+            if (showToast) showToast("Please enter a location or address to search", "warning");
+            return;
+        }
+        setIsSearchingLocation(true);
+
+        const applyFoundLocation = (lat, lng, addressLabel) => {
+            const newCoords = { lat, lng };
+            setPickerCoords(newCoords);
+            if (mapInstanceRef.current) {
+                mapInstanceRef.current.panTo(newCoords);
+                mapInstanceRef.current.setZoom(16);
+            }
+            if (showToast) showToast(`Found: ${addressLabel}`, "success");
+        };
+
+        if (window.google && window.google.maps && window.google.maps.Geocoder) {
+            const geocoder = new window.google.maps.Geocoder();
+            geocoder.geocode({ address: query }, (results, status) => {
+                if (status === 'OK' && results && results[0]) {
+                    setIsSearchingLocation(false);
+                    const loc = results[0].geometry.location;
+                    applyFoundLocation(loc.lat(), loc.lng(), results[0].formatted_address);
+                } else {
+                    // Fallback to OpenStreetMap Nominatim
+                    fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                        .then(r => r.json())
+                        .then(data => {
+                            setIsSearchingLocation(false);
+                            if (data && data.length > 0) {
+                                applyFoundLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name);
+                            } else {
+                                if (showToast) showToast("Location not found. Please try another place or city name.", "error");
+                            }
+                        })
+                        .catch(() => {
+                            setIsSearchingLocation(false);
+                            if (showToast) showToast("Location search failed", "error");
+                        });
+                }
+            });
+        } else {
+            fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`)
+                .then(r => r.json())
+                .then(data => {
+                    setIsSearchingLocation(false);
+                    if (data && data.length > 0) {
+                        applyFoundLocation(parseFloat(data[0].lat), parseFloat(data[0].lon), data[0].display_name);
+                    } else {
+                        if (showToast) showToast("Location not found. Please try another place or city name.", "error");
+                    }
+                })
+                .catch(() => {
+                    setIsSearchingLocation(false);
+                    if (showToast) showToast("Location search failed", "error");
+                });
+        }
+    };
+
+    const handleUseCurrentGPSLocation = () => {
+        if (!navigator.geolocation) {
+            if (showToast) showToast("Geolocation is not supported by your browser", "error");
+            return;
+        }
+        if (showToast) showToast("Locating device via GPS...", "info");
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const newCoords = { lat: pos.coords.latitude, lng: pos.coords.longitude };
+                setPickerCoords(newCoords);
+                if (mapInstanceRef.current) {
+                    mapInstanceRef.current.panTo(newCoords);
+                    mapInstanceRef.current.setZoom(17);
+                }
+                if (showToast) showToast("Device GPS location pinpointed!", "success");
+            },
+            (err) => {
+                console.error(err);
+                if (showToast) showToast("Could not access GPS location. Please allow permission.", "error");
+            },
+            { enableHighAccuracy: true, timeout: 10000 }
+        );
     };
 
     return (
@@ -603,10 +746,15 @@ export default function ClientsManager({
                                                 
                                                 <button 
                                                     onClick={() => handleDeleteClient(client)}
-                                                    style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', cursor: 'pointer', padding: '6px', borderRadius: '6px' }}
-                                                    title="Delete Property Owner"
+                                                    disabled={deletingClientId === (client.id || client.phone)}
+                                                    style={{ background: 'rgba(239, 68, 68, 0.08)', border: '1px solid rgba(239, 68, 68, 0.2)', color: '#ef4444', cursor: deletingClientId === (client.id || client.phone) ? 'not-allowed' : 'pointer', padding: '6px 10px', borderRadius: '6px', display: 'inline-flex', alignItems: 'center', gap: '4px' }}
+                                                    title="Delete Property Owner & All Listed Properties"
                                                 >
-                                                    <Trash2 size={14} />
+                                                    {deletingClientId === (client.id || client.phone) ? (
+                                                        <span style={{ fontSize: '0.72rem', fontWeight: 600 }}>Deleting...</span>
+                                                    ) : (
+                                                        <Trash2 size={14} />
+                                                    )}
                                                 </button>
                                             </div>
                                         </td>
@@ -739,10 +887,18 @@ export default function ClientsManager({
 
                                             <button 
                                                 onClick={() => handleDeleteProperty(listing)}
-                                                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: 'pointer', padding: '6px', borderRadius: '4px' }}
+                                                disabled={deletingPropertyId === listing.id}
+                                                style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', cursor: deletingPropertyId === listing.id ? 'not-allowed' : 'pointer', padding: '6px 10px', borderRadius: '4px', display: 'flex', alignItems: 'center', gap: '4px', fontSize: '0.75rem', fontWeight: 600 }}
                                                 title="Delete Property"
                                             >
-                                                <Trash2 size={14} />
+                                                {deletingPropertyId === listing.id ? (
+                                                    <span style={{ fontSize: '0.7rem' }}>Deleting...</span>
+                                                ) : (
+                                                    <>
+                                                        <Trash2 size={14} />
+                                                        <span>Delete</span>
+                                                    </>
+                                                )}
                                             </button>
                                         </div>
                                     </div>
@@ -1085,6 +1241,15 @@ export default function ClientsManager({
                                         const curLat = parseFloat(latInputVal) || 11.3410;
                                         const curLng = parseFloat(lngInputVal) || 77.7172;
                                         setPickerCoords({ lat: curLat, lng: curLng });
+
+                                        const locInput = document.querySelector('input[name="pLocation"]')?.value || '';
+                                        const streetInput = document.querySelector('input[name="pStreet"]')?.value || '';
+                                        const landmarkInput = document.querySelector('input[name="pLandmark"]')?.value || '';
+                                        const combined = [landmarkInput, streetInput, locInput].filter(Boolean).join(', ');
+                                        
+                                        if (combined && !mapSearchText) {
+                                            setMapSearchText(combined);
+                                        }
                                         setIsMapPickerOpen(true);
                                     }}
                                     style={{
@@ -1104,7 +1269,7 @@ export default function ClientsManager({
                                         transition: 'all 0.2s ease'
                                     }}
                                 >
-                                    <MapPin size={16} /> 📍 Click to Pick Precise Location on Map
+                                    <MapPin size={16} /> 📍 Click to Pick / Search Precise Location on Map
                                 </button>
                             </div>
 
@@ -1437,25 +1602,52 @@ export default function ClientsManager({
                                 <textarea name="pDesc" rows="3" defaultValue={editingProperty ? editingProperty.description : ''} placeholder="Write details about flooring, water facilities, compound walls, legal documentation, road width, etc..." style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', resize: 'none' }} />
                             </div>
 
-                            <button type="submit" style={{ width: '100%', padding: '12px', background: '#921214', color: '#ffffff', border: 'none', borderRadius: '6px', fontWeight: 800, fontSize: '0.9rem', cursor: 'pointer', marginTop: '6px' }}>
-                                {editingProperty ? 'Save Property Changes' : 'List Property'}
+                            <button 
+                                type="submit" 
+                                disabled={isSavingProperty}
+                                style={{ 
+                                    width: '100%', 
+                                    padding: '12px', 
+                                    background: isSavingProperty ? '#750d0f' : '#921214', 
+                                    color: '#ffffff', 
+                                    border: 'none', 
+                                    borderRadius: '6px', 
+                                    fontWeight: 800, 
+                                    fontSize: '0.9rem', 
+                                    cursor: isSavingProperty ? 'not-allowed' : 'pointer', 
+                                    marginTop: '6px',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'center',
+                                    gap: '8px'
+                                }}
+                            >
+                                {isSavingProperty ? (
+                                    <>
+                                        <span className="spinner-loader" style={{ border: '2px solid rgba(255,255,255,0.3)', borderTop: '2px solid #fff', borderRadius: '50%', width: '16px', height: '16px', animation: 'spin 0.8s linear infinite' }}></span>
+                                        <span>{editingProperty ? 'Saving Property Changes...' : 'Listing Property...'}</span>
+                                    </>
+                                ) : (
+                                    <span>{editingProperty ? 'Save Property Changes' : 'List Property'}</span>
+                                )}
                             </button>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Interactive Map Location Picker Modal */}
+            {/* Interactive Map Location Picker Modal with Search & GPS */}
             {isMapPickerOpen && (
-                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.7)', backdropFilter: 'blur(4px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '20px' }}>
-                    <div style={{ background: 'var(--bg-panel)', padding: '20px', borderRadius: '12px', width: '90%', maxWidth: '720px', height: '80vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)', boxShadow: '0 10px 30px rgba(0,0,0,0.4)' }}>
+                <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.75)', backdropFilter: 'blur(5px)', zIndex: 10000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+                    <div style={{ background: 'var(--bg-panel)', padding: '20px', borderRadius: '12px', width: '95%', maxWidth: '820px', height: '88vh', display: 'flex', flexDirection: 'column', border: '1px solid var(--border-color)', boxShadow: '0 12px 36px rgba(0,0,0,0.45)', gap: '12px' }}>
                         
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '14px' }}>
+                        {/* Header */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border-color)', paddingBottom: '10px' }}>
                             <div>
-                                <h3 style={{ margin: 0, fontSize: '1.1rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                                    <MapPin size={20} color="#921214" /> Pick Property Location on Map
+                                <h3 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                    <MapPin size={20} color="#921214" /> Find & Pick Property Location on Map
                                 </h3>
-                                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Click anywhere on the map or drag the pin to set exact coordinates.</p>
+                                <p style={{ margin: '2px 0 0 0', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Search by place/address, click on the map, or drag the red pin to set exact coordinates.</p>
                             </div>
 
                             <button onClick={() => setIsMapPickerOpen(false)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}>
@@ -1463,12 +1655,82 @@ export default function ClientsManager({
                             </button>
                         </div>
 
+                        {/* Search & GPS Bar */}
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <form 
+                                onSubmit={(e) => {
+                                    e.preventDefault();
+                                    handleLocationSearch(mapSearchText);
+                                }}
+                                style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
+                            >
+                                <div style={{ position: 'relative', flex: 1 }}>
+                                    <Search size={16} style={{ position: 'absolute', left: '12px', top: '50%', transform: 'translateY(-50%)', color: 'var(--text-muted)' }} />
+                                    <input 
+                                        type="text"
+                                        value={mapSearchText}
+                                        onChange={(e) => setMapSearchText(e.target.value)}
+                                        placeholder="Search address, landmark, area, or city (e.g. Gandhipuram, Coimbatore)..."
+                                        style={{ width: '100%', padding: '10px 12px 10px 36px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }}
+                                    />
+                                    {mapSearchText && (
+                                        <button 
+                                            type="button" 
+                                            onClick={() => setMapSearchText('')} 
+                                            style={{ position: 'absolute', right: '10px', top: '50%', transform: 'translateY(-50%)', background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--text-muted)' }}
+                                        >
+                                            <X size={14} />
+                                        </button>
+                                    )}
+                                </div>
+
+                                <button 
+                                    type="submit"
+                                    disabled={isSearchingLocation}
+                                    style={{ padding: '10px 16px', background: '#921214', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.82rem', cursor: isSearchingLocation ? 'not-allowed' : 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap', opacity: isSearchingLocation ? 0.7 : 1 }}
+                                >
+                                    <Search size={14} /> {isSearchingLocation ? 'Searching...' : 'Find on Map'}
+                                </button>
+
+                                <button 
+                                    type="button"
+                                    onClick={handleUseCurrentGPSLocation}
+                                    style={{ padding: '10px 14px', background: 'var(--bg-surface)', color: 'var(--text-primary)', border: '1px solid var(--border-color)', borderRadius: '6px', fontWeight: 700, fontSize: '0.82rem', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', whiteSpace: 'nowrap' }}
+                                    title="Use my device's current GPS location"
+                                >
+                                    <Crosshair size={14} style={{ color: '#00a2bb' }} /> <span>GPS</span>
+                                </button>
+                            </form>
+
+                            {/* Quick City Presets */}
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '6px', overflowX: 'auto', paddingBottom: '2px' }}>
+                                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Quick Jumps:</span>
+                                {['Coimbatore', 'Erode', 'Tiruppur', 'Salem', 'Chennai', 'Bengaluru', 'Madurai'].map((city) => (
+                                    <button 
+                                        key={city}
+                                        type="button"
+                                        onClick={() => {
+                                            setMapSearchText(city);
+                                            handleLocationSearch(city);
+                                        }}
+                                        style={{ padding: '3px 8px', borderRadius: '12px', background: 'var(--bg-surface)', border: '1px solid var(--border-color)', color: 'var(--text-secondary)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                    >
+                                        {city}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Map Canvas */}
                         <div style={{ flex: 1, borderRadius: '8px', overflow: 'hidden', border: '1px solid var(--border-color)', position: 'relative' }}>
                             {isLoaded ? (
                                 <GoogleMap
                                     mapContainerStyle={{ width: '100%', height: '100%' }}
                                     center={pickerCoords}
-                                    zoom={13}
+                                    zoom={14}
+                                    onLoad={(map) => {
+                                        mapInstanceRef.current = map;
+                                    }}
                                     onClick={(e) => {
                                         if (e.latLng) {
                                             setPickerCoords({ lat: e.latLng.lat(), lng: e.latLng.lng() });
@@ -1492,9 +1754,36 @@ export default function ClientsManager({
                             )}
                         </div>
 
-                        <div style={{ marginTop: '14px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-main)', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
-                            <div style={{ fontSize: '0.8rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                                Selected Coordinates: <span style={{ color: '#921214' }}>{pickerCoords.lat.toFixed(6)}, {pickerCoords.lng.toFixed(6)}</span>
+                        {/* Bottom Actions Bar */}
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: 'var(--bg-main)', padding: '10px 14px', borderRadius: '6px', border: '1px solid var(--border-color)', flexWrap: 'wrap', gap: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                                    Latitude:
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        value={pickerCoords.lat}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            if (!isNaN(val)) setPickerCoords(prev => ({ ...prev, lat: val }));
+                                        }}
+                                        style={{ marginLeft: '6px', width: '110px', padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-panel)', color: '#921214', fontWeight: 800, fontSize: '0.78rem' }}
+                                    />
+                                </div>
+
+                                <div style={{ fontSize: '0.78rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                                    Longitude:
+                                    <input 
+                                        type="number" 
+                                        step="any"
+                                        value={pickerCoords.lng}
+                                        onChange={(e) => {
+                                            const val = parseFloat(e.target.value);
+                                            if (!isNaN(val)) setPickerCoords(prev => ({ ...prev, lng: val }));
+                                        }}
+                                        style={{ marginLeft: '6px', width: '110px', padding: '4px 6px', borderRadius: '4px', border: '1px solid var(--border-color)', background: 'var(--bg-panel)', color: '#921214', fontWeight: 800, fontSize: '0.78rem' }}
+                                    />
+                                </div>
                             </div>
 
                             <div style={{ display: 'flex', gap: '10px' }}>
@@ -1515,7 +1804,7 @@ export default function ClientsManager({
                                     }}
                                     style={{ padding: '8px 16px', background: '#921214', color: '#fff', border: 'none', borderRadius: '6px', fontWeight: 700, fontSize: '0.8rem', cursor: 'pointer', boxShadow: '0 2px 6px rgba(146, 18, 20, 0.3)' }}
                                 >
-                                    Confirm Selected Location
+                                    Confirm Location Pin
                                 </button>
                             </div>
                         </div>

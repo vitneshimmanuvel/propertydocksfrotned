@@ -80,6 +80,17 @@ export default function UserPortal({
     const [isMobileView, setIsMobileView] = useState(typeof window !== 'undefined' ? window.innerWidth <= 768 : false);
     const [isMobileFiltersOpen, setIsMobileFiltersOpen] = useState(false);
     const [expandedDistricts, setExpandedDistricts] = useState({});
+    const [activeRouteDestination, setActiveRouteDestination] = useState(null);
+
+    const handleNavigateToProperty = useCallback((loc) => {
+        setActiveRouteDestination(loc);
+        setFocusedLocation(loc);
+        setViewMode('map');
+        setSelectedDetailListing(null);
+        if (showToast) {
+            showToast(`Plotting live driving route to ${loc.name || loc.title || 'property'} on map...`, 'info');
+        }
+    }, [showToast]);
 
     useEffect(() => {
         const handleMobileCheck = () => {
@@ -180,26 +191,74 @@ export default function UserPortal({
         return null;
     };
 
+    const DISTRICT_COORDINATES = {
+        'erode': { lat: 11.3410, lng: 77.7172 },
+        'coimbatore': { lat: 11.0168, lng: 76.9558 },
+        'tiruppur': { lat: 11.1085, lng: 77.3411 },
+        'tirupur': { lat: 11.1085, lng: 77.3411 },
+        'salem': { lat: 11.6643, lng: 78.1460 },
+        'chennai': { lat: 13.0827, lng: 80.2707 },
+        'madurai': { lat: 9.9252, lng: 78.1198 },
+        'vijayamangalam': { lat: 11.2333, lng: 77.5333 },
+        'perundurai': { lat: 11.2764, lng: 77.5831 },
+        'bhavani': { lat: 11.4484, lng: 77.6836 },
+        'gobichettipalayam': { lat: 11.4549, lng: 77.4426 },
+        'gobi': { lat: 11.4549, lng: 77.4426 },
+        'sathyamangalam': { lat: 11.5050, lng: 77.2458 },
+        'sathy': { lat: 11.5050, lng: 77.2458 },
+        'trichy': { lat: 10.7905, lng: 78.7047 },
+        'tiruchirappalli': { lat: 10.7905, lng: 78.7047 },
+        'namakkal': { lat: 11.2189, lng: 78.1674 },
+        'karur': { lat: 10.9601, lng: 78.0766 },
+        'dindigul': { lat: 10.3673, lng: 77.9803 },
+        'pollachi': { lat: 10.6609, lng: 77.0048 },
+        'mettupalayam': { lat: 11.3000, lng: 76.9400 },
+        'hosur': { lat: 12.7409, lng: 77.8253 },
+        'vellore': { lat: 12.9165, lng: 79.1325 },
+        'thanjavur': { lat: 10.7870, lng: 79.1378 },
+        'dharmapuri': { lat: 12.1211, lng: 78.1582 },
+        'krishnagiri': { lat: 12.5186, lng: 78.2137 },
+        'ooty': { lat: 11.4102, lng: 76.6950 },
+        'nilgiris': { lat: 11.4102, lng: 76.6950 },
+        'tirunelveli': { lat: 8.7139, lng: 77.7567 },
+        'kanchipuram': { lat: 12.8342, lng: 79.7036 }
+    };
+
     const getFallbackCoords = (locationStr, idSeed = 0) => {
-        const loc = (locationStr || '').toLowerCase();
+        const loc = (locationStr || '').toLowerCase().trim();
         let base = { lat: 11.3410, lng: 77.7172 }; // Default Erode / Tamil Nadu
 
-        if (loc.includes('chennai')) base = { lat: 13.0827, lng: 80.2707 };
-        else if (loc.includes('coimbatore')) base = { lat: 11.0168, lng: 76.9558 };
-        else if (loc.includes('tiruppur') || loc.includes('tirupur')) base = { lat: 11.1085, lng: 77.3411 };
-        else if (loc.includes('salem')) base = { lat: 11.6643, lng: 78.1460 };
-        else if (loc.includes('madurai')) base = { lat: 9.9252, lng: 78.1198 };
-        else if (loc.includes('vijayamangalam')) base = { lat: 11.2333, lng: 77.5333 };
-        else if (loc.includes('toronto') || loc.includes('ontario') || loc.includes('kitchener')) base = { lat: 43.6532, lng: -79.3832 };
+        for (const [key, coords] of Object.entries(DISTRICT_COORDINATES)) {
+            if (loc.includes(key)) {
+                base = coords;
+                break;
+            }
+        }
 
         const seed = typeof idSeed === 'number' ? idSeed : (String(idSeed).charCodeAt(0) || 0);
-        const jitterLat = (((seed * 7) % 10) - 5) * 0.004;
-        const jitterLng = (((seed * 13) % 10) - 5) * 0.004;
+        const jitterLat = (((seed * 7) % 10) - 5) * 0.003;
+        const jitterLng = (((seed * 13) % 10) - 5) * 0.003;
 
         return {
             lat: base.lat + jitterLat,
             lng: base.lng + jitterLng
         };
+    };
+
+    const formatListingPrice = (loc) => {
+        if (!loc) return null;
+        if (loc.category === 'bogithu' && loc.bogithuAmount && Number(loc.bogithuAmount) > 0) {
+            const amt = Number(loc.bogithuAmount);
+            const yrs = loc.bogithuYears ? ` for ${loc.bogithuYears} Years` : '';
+            return `₹${amt.toLocaleString('en-IN')}${yrs} (Lease)`;
+        }
+        if (loc.rentAmount && Number(loc.rentAmount) > 0) {
+            return `₹${Number(loc.rentAmount).toLocaleString('en-IN')} / mo`;
+        }
+        if (loc.price && Number(loc.price) > 0) {
+            return `₹${Number(loc.price).toLocaleString('en-IN')}`;
+        }
+        return null;
     };
 
     const loadAllLocations = useCallback(() => {
@@ -258,6 +317,15 @@ export default function UserPortal({
             const defaultImg = 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80';
             const displayAddress = `${layout.name || 'Property Layout'}, ${layout.area || ''}, ${layout.district || 'Erode'}`;
 
+            // Compute clean starting price if plots have prices
+            let startingPrice = null;
+            if (layout.plots && layout.plots.length > 0) {
+                const validPlotPrices = layout.plots.filter(p => p.price && Number(p.price) > 0);
+                if (validPlotPrices.length > 0) {
+                    startingPrice = validPlotPrices[0].price * (validPlotPrices[0].area || 1200);
+                }
+            }
+
             return {
                 id: layout.id || `layout_${idx}`,
                 name: layout.name || 'Property Layout',
@@ -271,7 +339,7 @@ export default function UserPortal({
                 area: layout.area || layout.district || 'Vijayamangalam',
                 displayAddress,
                 location: layout.district || 'Erode',
-                price: layout.plots && layout.plots.length > 0 ? (layout.plots[0].price ? layout.plots[0].price * (layout.plots[0].area || 1200) : 4500000) : 4500000,
+                price: startingPrice,
                 media: [{ type: 'image', url: layout.backgroundImage?.href || defaultImg }],
                 plots: layout.plots || [],
                 category: 'residential',
@@ -326,7 +394,8 @@ export default function UserPortal({
         setUserSearchText("");
     };
 
-    const filteredLocations = useMemo(() => {
+    // Category / Filtered baseline locations across all districts (kept for the Map so panning works everywhere)
+    const allCategoryLocations = useMemo(() => {
         let results = allLocations.filter(loc => (loc.status || '').toLowerCase() !== 'disabled');
 
         // 1. Filter by Residential / Commercial tab
@@ -343,7 +412,6 @@ export default function UserPortal({
             results = results.filter(loc => {
                 const cat = (loc.category || 'residential').toLowerCase();
                 const isCommercial = COMMERCIAL_CATS.some(c => cat.includes(c));
-                // Show it if it's residential OR if it doesn't match any commercial category
                 return !isCommercial || RESIDENTIAL_CATS.some(c => cat.includes(c));
             });
         }
@@ -369,7 +437,6 @@ export default function UserPortal({
                 return true;
             });
         }
-        // If advancedFilters.transactionType === 'all', show all listings regardless of transaction type
 
         // 3. Filter by min/max price
         if (advancedFilters.minPrice) {
@@ -415,9 +482,17 @@ export default function UserPortal({
             results = results.filter(loc => Number(loc.landArea || String(loc.sqft).replace(/,/g, '') || 0) <= maxL);
         }
 
-        // 6. Filter by text query if typed
+        return results;
+    }, [allLocations, advancedFilters]);
+
+    // Filtered locations for list views (text matching or distance ranking)
+    const filteredLocations = useMemo(() => {
+        let results = [...allCategoryLocations];
+
+        // Filter by text query if typed
         if (userSearchText && userSearchText.trim()) {
             const query = userSearchText.toLowerCase().trim();
+            // If the query exactly matches a district, prioritize/keep properties in that district
             results = results.filter(loc => {
                 const text = [
                     loc.name,
@@ -437,7 +512,7 @@ export default function UserPortal({
             });
         }
 
-        // 7. Filter by coordinates radius if geocoded
+        // Filter by coordinates radius if geocoded
         if (userSearchCoords) {
             results = results.map(loc => ({
                 ...loc,
@@ -446,7 +521,7 @@ export default function UserPortal({
         }
 
         return results;
-    }, [allLocations, userSearchText, userSearchCoords, advancedFilters]);
+    }, [allCategoryLocations, userSearchText, userSearchCoords]);
 
     const [drawnFilteredLocations, setDrawnFilteredLocations] = useState(null);
     const [clearBoundaryTrigger, setClearBoundaryTrigger] = useState(0);
@@ -1198,8 +1273,9 @@ export default function UserPortal({
                                             <div 
                                                 key={loc.id || idx} 
                                                 className="realtor-listing-card"
-                                                style={{ borderRadius: '8px' }}
+                                                style={{ borderRadius: '8px', cursor: 'pointer' }}
                                                 onClick={() => setSelectedDetailListing(loc)}
+                                                onDoubleClick={() => setSelectedDetailListing(loc)}
                                             >
                                                 <div style={{ position: 'relative' }}>
                                                     <img 
@@ -1213,8 +1289,8 @@ export default function UserPortal({
                                                     <button 
                                                         className="realtor-listing-fav"
                                                         onClick={(e) => {
-                                                            e.stopPropagation();
-                                                            toggleFavorite(loc.id);
+                                                             e.stopPropagation();
+                                                             toggleFavorite(loc.id);
                                                         }}
                                                     >
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
@@ -1231,19 +1307,20 @@ export default function UserPortal({
                                                             <Share2 size={15} color="#921214" />
                                                         )}
                                                     </button>
-                                                    <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '3px', fontWeight: 600 }}>
-                                                        {loc.listedAgo || 'Recently Added'}
-                                                    </div>
                                                 </div>
                                                 <div className="realtor-listing-card-body">
-                                                    <div className="realtor-listing-price">
-                                                        {loc.isOwnerListing 
-                                                            ? (loc.category === 'bogithu' ? `₹${Number(loc.bogithuAmount || 1500000).toLocaleString('en-IN')}` : `₹${Number(loc.rentAmount || 25000).toLocaleString('en-IN')}`)
-                                                            : (loc.price ? `₹${Number(loc.price).toLocaleString('en-IN')}` : '₹45,00,000')}
-                                                    </div>
-                                                    <div className="realtor-listing-address">
+                                                    {/* Property Name/Title Below Image */}
+                                                    <div className="realtor-listing-address" style={{ fontWeight: 800, fontSize: '1.05rem', color: '#0f172a', marginBottom: '4px' }}>
                                                         {loc.name || loc.title || 'Verified Property'}
                                                     </div>
+
+                                                    {/* Price ONLY if available */}
+                                                    {formatListingPrice(loc) && (
+                                                        <div className="realtor-listing-price" style={{ marginBottom: '6px' }}>
+                                                            {formatListingPrice(loc)}
+                                                        </div>
+                                                    )}
+
                                                     <div className="realtor-listing-location">
                                                         {loc.displayAddress || `${loc.district || 'Erode'}, ${loc.state || 'Tamil Nadu'}`}
                                                     </div>
@@ -1552,7 +1629,25 @@ export default function UserPortal({
                                 /* Desktop Search Bar Grid */
                                 <div className="realtor-search-bar-grid">
                                     <div style={{ position: 'relative', width: '100%', flex: 1, minWidth: '220px' }}>
-                                        <input type="text" className="realtor-input" placeholder="City, Neighbourhood, Address or MLS® number" value={userSearchText} onChange={(e) => setUserSearchText(e.target.value)} />
+                                        <input 
+                                            type="text" 
+                                            className="realtor-input" 
+                                            placeholder="City (e.g. Erode, Coimbatore), Neighbourhood, Address" 
+                                            value={userSearchText} 
+                                            onChange={(e) => setUserSearchText(e.target.value)}
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter') {
+                                                    const q = (userSearchText || '').trim().toLowerCase();
+                                                    for (const [dist, coords] of Object.entries(DISTRICT_COORDINATES)) {
+                                                        if (q.includes(dist) || dist.includes(q)) {
+                                                            setUserSearchCoords(coords);
+                                                            if (showToast) showToast(`Centered map on ${dist.toUpperCase()}!`, "info");
+                                                            break;
+                                                        }
+                                                    }
+                                                }
+                                            }}
+                                        />
                                         {userSearchText && (<X size={16} onClick={clearSearch} style={{ position: 'absolute', right: '12px', top: '50%', transform: 'translateY(-50%)', color: '#94a3b8', cursor: 'pointer' }} />)}
                                     </div>
 
@@ -1627,7 +1722,20 @@ export default function UserPortal({
                                         </>
                                     )}
 
-                                    <button className="btn-realtor-search" onClick={() => showToast(`Searching for ${userSearchText || 'all listings'}...`, "info")}>
+                                    <button 
+                                        className="btn-realtor-search" 
+                                        onClick={() => {
+                                            const q = (userSearchText || '').trim().toLowerCase();
+                                            for (const [dist, coords] of Object.entries(DISTRICT_COORDINATES)) {
+                                                if (q.includes(dist) || dist.includes(q)) {
+                                                    setUserSearchCoords(coords);
+                                                    if (showToast) showToast(`Centered map on ${dist.toUpperCase()}!`, "info");
+                                                    return;
+                                                }
+                                            }
+                                            showToast(`Searching for ${userSearchText || 'all listings'}...`, "info");
+                                        }}
+                                    >
                                         <Search size={18} />
                                     </button>
 
@@ -1733,8 +1841,11 @@ export default function UserPortal({
                                                 className="realtor-listing-card" 
                                                 onClick={() => {
                                                     setFocusedLocation(loc);
-                                                    setSelectedDetailListing(loc);
+                                                    if (isMobileView) {
+                                                        setSelectedDetailListing(loc);
+                                                    }
                                                 }} 
+                                                onDoubleClick={() => setSelectedDetailListing(loc)}
                                                 style={{ marginBottom: '12px', borderRadius: '8px', cursor: 'pointer' }}
                                             >
                                                 <div style={{ position: 'relative' }}>
@@ -1754,11 +1865,20 @@ export default function UserPortal({
                                                             <Share2 size={15} color="#921214" />
                                                         )}
                                                     </button>
-                                                    <div style={{ position: 'absolute', bottom: '8px', left: '8px', background: 'rgba(0,0,0,0.6)', color: '#fff', fontSize: '0.7rem', padding: '2px 8px', borderRadius: '3px', fontWeight: 600 }}>{loc.listedAgo || '2 hours ago'}</div>
                                                 </div>
                                                 <div className="realtor-listing-card-body">
-                                                    <div className="realtor-listing-price">{loc.isOwnerListing ? (loc.category === 'bogithu' ? `₹${Number(loc.bogithuAmount || 1500000).toLocaleString('en-IN')}` : `₹${Number(loc.rentAmount || 25000).toLocaleString('en-IN')}`) : (loc.price ? `₹${Number(loc.price).toLocaleString('en-IN')}` : '₹45,00,000')}</div>
-                                                    <div className="realtor-listing-address">{loc.name || loc.title || 'Property Listing'}</div>
+                                                    {/* Property Name Below Image */}
+                                                    <div className="realtor-listing-address" style={{ fontWeight: 800, fontSize: '0.98rem', color: '#0f172a', marginBottom: '3px' }}>
+                                                        {loc.name || loc.title || 'Property Listing'}
+                                                    </div>
+
+                                                    {/* Price ONLY if available */}
+                                                    {formatListingPrice(loc) && (
+                                                        <div className="realtor-listing-price" style={{ marginBottom: '4px' }}>
+                                                            {formatListingPrice(loc)}
+                                                        </div>
+                                                    )}
+
                                                     <div className="realtor-listing-location">{loc.displayAddress || `${loc.district || 'Area'}, ${loc.state || 'State'}`}</div>
                                                     <div className="realtor-listing-specs">
                                                         <span>🛏️ {loc.beds || 3}</span>
@@ -1788,10 +1908,11 @@ export default function UserPortal({
                                     )}
                                     <div style={{ flex: 1, position: 'relative' }}>
                                         <GlobalMap 
-                                            locations={filteredLocations} 
+                                            locations={allCategoryLocations} 
                                             center={focusedLocation ? { lat: focusedLocation.lat, lng: focusedLocation.lng } : userSearchCoords} 
-                                            zoom={focusedLocation || userSearchCoords ? 13 : null} 
+                                            zoom={focusedLocation ? 14 : (userSearchCoords ? 13 : null)} 
                                             focusedLocation={focusedLocation}
+                                            activeRouteDestination={activeRouteDestination}
                                             onFilteredLocationsChange={setDrawnFilteredLocations}
                                             clearBoundaryTrigger={clearBoundaryTrigger}
                                             authUser={authUser}
@@ -1804,6 +1925,7 @@ export default function UserPortal({
                                             onShowAllProperties={() => {
                                                 clearSearch();
                                                 setUserSearchCoords(null);
+                                                setActiveRouteDestination(null);
                                                 setDrawnFilteredLocations(null);
                                                 setClearBoundaryTrigger(prev => prev + 1);
                                                 if (showToast) showToast("Showing all properties on map!", "info");
@@ -1818,7 +1940,13 @@ export default function UserPortal({
                                 <div style={{ flex: 1, overflowY: 'auto', padding: '24px', background: '#f8fafc' }}>
                                     <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))', gap: '20px', maxWidth: '1400px', margin: '0 auto' }}>
                                         {sortedDisplayLocations.length > 0 ? sortedDisplayLocations.map(loc => (
-                                            <div key={loc.id} className="realtor-listing-card" style={{ borderRadius: '8px' }} onClick={() => setSelectedDetailListing(loc)}>
+                                            <div 
+                                                key={loc.id} 
+                                                className="realtor-listing-card" 
+                                                style={{ borderRadius: '8px', cursor: 'pointer' }} 
+                                                onClick={() => setSelectedDetailListing(loc)}
+                                                onDoubleClick={() => setSelectedDetailListing(loc)}
+                                            >
                                                 <div style={{ position: 'relative' }}>
                                                     <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} loading="lazy" decoding="async" />
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
@@ -1838,8 +1966,18 @@ export default function UserPortal({
                                                     </button>
                                                 </div>
                                                 <div className="realtor-listing-card-body">
-                                                    <div className="realtor-listing-price">{loc.isOwnerListing ? (loc.category === 'bogithu' ? `₹${Number(loc.bogithuAmount).toLocaleString('en-IN')}` : `₹${Number(loc.rentAmount).toLocaleString('en-IN')}`) : (loc.price ? `₹${Number(loc.price).toLocaleString('en-IN')}` : '₹45,00,000')}</div>
-                                                    <div className="realtor-listing-address">{loc.name || loc.title || 'Property Listing'}</div>
+                                                    {/* Property Name Below Image */}
+                                                    <div className="realtor-listing-address" style={{ fontWeight: 800, fontSize: '1.02rem', color: '#0f172a', marginBottom: '3px' }}>
+                                                        {loc.name || loc.title || 'Property Listing'}
+                                                    </div>
+
+                                                    {/* Price ONLY if available */}
+                                                    {formatListingPrice(loc) && (
+                                                        <div className="realtor-listing-price" style={{ marginBottom: '6px' }}>
+                                                            {formatListingPrice(loc)}
+                                                        </div>
+                                                    )}
+
                                                     <div className="realtor-listing-location">{loc.displayAddress || `${loc.district || 'Area'}, ${loc.state || 'State'}`}</div>
                                                     <div className="realtor-listing-specs">
                                                         <span>🛏️ {loc.beds || 3}</span>
@@ -2127,6 +2265,7 @@ export default function UserPortal({
                 isFavorite={isFavorite}
                 onToggleFavorite={toggleFavorite}
                 onCopyLink={handleCopyPropertyLink}
+                onGetRoute={handleNavigateToProperty}
                 onRequestShowing={(listing) => { setSelectedContactListing(listing); setSelectedDetailListing(null); setContactModalOpen(true); }}
             />
 

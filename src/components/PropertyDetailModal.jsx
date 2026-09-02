@@ -19,8 +19,9 @@ import {
     Eye
 } from 'lucide-react';
 import UniversalVideoPlayer from './UniversalVideoPlayer';
+import { openDirectionsToLocation } from './GlobalMap';
 
-export default function PropertyDetailModal({ listing, isOpen, onClose, onToggleFavorite, isFavorite, onRequestShowing, onCopyLink }) {
+export default function PropertyDetailModal({ listing, isOpen, onClose, onToggleFavorite, isFavorite, onRequestShowing, onCopyLink, onGetRoute }) {
     if (!isOpen || !listing) return null;
 
     const defaultFallbackImages = [
@@ -81,9 +82,23 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
         setActiveMediaIndex(prev => (prev < mediaList.length - 1 ? prev + 1 : 0));
     };
 
-    const displayPrice = listing.isOwnerListing 
-        ? (listing.category === 'bogithu' ? `₹${Number(listing.bogithuAmount || 1500000).toLocaleString('en-IN')}` : `₹${Number(listing.rentAmount || 25000).toLocaleString('en-IN')}`)
-        : `₹${Number(listing.price || 4500000).toLocaleString('en-IN')}`;
+    const formatPriceDisplay = () => {
+        if (!listing) return null;
+        if (listing.category === 'bogithu' && listing.bogithuAmount && Number(listing.bogithuAmount) > 0) {
+            const amt = Number(listing.bogithuAmount);
+            const yrs = listing.bogithuYears ? ` for ${listing.bogithuYears} Years` : '';
+            return `₹${amt.toLocaleString('en-IN')}${yrs} (Lease)`;
+        }
+        if (listing.rentAmount && Number(listing.rentAmount) > 0) {
+            return `₹${Number(listing.rentAmount).toLocaleString('en-IN')} / month`;
+        }
+        if (listing.price && Number(listing.price) > 0) {
+            return `₹${Number(listing.price).toLocaleString('en-IN')}`;
+        }
+        return null;
+    };
+
+    const displayPrice = formatPriceDisplay();
 
     return (
         <div className="realtor-detail-modal-overlay" onClick={onClose}>
@@ -99,8 +114,31 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                     </div>
 
                     <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-                        <button className="btn-realtor-filter" style={{ padding: '6px 12px', fontSize: '0.82rem', borderRadius: '20px' }}>
-                            <Compass size={14} /> Directions
+                        <button 
+                            className="btn-realtor-filter" 
+                            style={{ 
+                                padding: '6px 14px', 
+                                fontSize: '0.82rem', 
+                                borderRadius: '20px',
+                                background: '#0284c7',
+                                color: '#ffffff',
+                                border: '1px solid #0284c7',
+                                cursor: 'pointer',
+                                display: 'flex',
+                                alignItems: 'center',
+                                gap: '6px',
+                                fontWeight: 700
+                            }}
+                            onClick={(e) => {
+                                if (onGetRoute) {
+                                    onGetRoute(listing);
+                                } else {
+                                    openDirectionsToLocation(listing, e);
+                                }
+                            }}
+                            title="Draw live driving route to this plot on the map"
+                        >
+                            <Compass size={15} /> In-App Route
                         </button>
                         <button 
                             className="btn-realtor-filter" 
@@ -139,7 +177,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                 <div className="realtor-modal-body" style={{ padding: '24px' }}>
                     {/* Header Address Title */}
                     <h1 className="realtor-detail-title" style={{ fontSize: '1.8rem', fontWeight: '800', color: '#0f172a', margin: '0 0 16px 0', textTransform: 'uppercase', letterSpacing: '-0.5px' }}>
-                        {listing.title || listing.name || listing.address || '18 BOONE CRESCENT'}
+                        {listing.title || listing.name || listing.address || 'Property Details'}
                     </h1>
 
                     {/* 5-Photo Gallery Grid matching user's screenshot */}
@@ -183,15 +221,17 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                     <div className="realtor-detail-split-container" style={{ display: 'grid', gridTemplateColumns: '2fr 1fr', gap: '32px', marginTop: '24px' }}>
                         {/* Left Details Panel */}
                         <div>
-                            {/* Listed Time Badge */}
-                            <div style={{ display: 'inline-block', background: '#475569', color: '#ffffff', fontSize: '0.75rem', fontWeight: 600, padding: '3px 10px', borderRadius: '4px', marginBottom: '12px' }}>
-                                {listing.listedAgo || '8 hours ago'} • Verified Property
+                            {/* Verification Badge */}
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#0284c7', color: '#ffffff', fontSize: '0.75rem', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '12px' }}>
+                                <CheckCircle2 size={13} /> Verified Legal Property
                             </div>
 
-                            {/* Price */}
-                            <div className="realtor-detail-price" style={{ fontSize: '2.4rem', fontWeight: '900', color: '#921214', margin: '0 0 6px 0' }}>
-                                {displayPrice}
-                            </div>
+                            {/* Price (ONLY if available) */}
+                            {displayPrice && (
+                                <div className="realtor-detail-price" style={{ fontSize: '2.4rem', fontWeight: '900', color: '#921214', margin: '0 0 6px 0' }}>
+                                    {displayPrice}
+                                </div>
+                            )}
 
                             <p style={{ fontSize: '1.05rem', fontWeight: '600', color: '#334155', margin: '0 0 16px 0' }}>
                                 {listing.displayAddress || listing.address || `${listing.area || 'Vijayamangalam'}, ${listing.district || 'Erode'}, Tamil Nadu`}
@@ -263,9 +303,39 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                                 <button 
                                     className="btn-request-showing"
                                     onClick={() => onRequestShowing(listing)}
-                                    style={{ width: '100%', marginBottom: '12px' }}
+                                    style={{ width: '100%', marginBottom: '10px' }}
                                 >
                                     Request a showing
+                                </button>
+
+                                <button 
+                                    onClick={(e) => {
+                                        if (onGetRoute) {
+                                            onGetRoute(listing);
+                                        } else {
+                                            openDirectionsToLocation(listing, e);
+                                        }
+                                    }}
+                                    style={{ 
+                                        width: '100%', 
+                                        marginBottom: '10px',
+                                        padding: '12px', 
+                                        background: '#0284c7', 
+                                        color: '#ffffff',
+                                        border: 'none', 
+                                        borderRadius: '8px', 
+                                        fontWeight: 700, 
+                                        cursor: 'pointer', 
+                                        display: 'flex', 
+                                        alignItems: 'center', 
+                                        justifyContent: 'center', 
+                                        gap: '8px',
+                                        fontSize: '0.9rem',
+                                        boxShadow: '0 2px 6px rgba(2, 132, 199, 0.25)'
+                                    }}
+                                    title="Draw in-app driving route from your location to this plot on the map"
+                                >
+                                    <Compass size={18} /> 🧭 View Driving Route on Map
                                 </button>
 
                                 <button 

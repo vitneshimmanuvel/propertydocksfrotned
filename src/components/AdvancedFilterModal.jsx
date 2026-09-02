@@ -102,7 +102,7 @@ export default function AdvancedFilterModal({ isOpen, onClose, filters, setFilte
                         {/* Price Range */}
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '8px' }}>
-                                Price
+                                Price Range
                             </label>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                                 <select 
@@ -111,11 +111,12 @@ export default function AdvancedFilterModal({ isOpen, onClose, filters, setFilte
                                     onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
                                 >
                                     <option value="">No min</option>
-                                    <option value="250000">$250,000</option>
-                                    <option value="500000">$500,000</option>
-                                    <option value="750000">$750,000</option>
-                                    <option value="1000000">$1,000,000</option>
-                                    <option value="1500000">$1,500,000</option>
+                                    <option value="1000000">₹10 Lakhs</option>
+                                    <option value="2500000">₹25 Lakhs</option>
+                                    <option value="5000000">₹50 Lakhs</option>
+                                    <option value="7500000">₹75 Lakhs</option>
+                                    <option value="10000000">₹1 Crore</option>
+                                    <option value="20000000">₹2 Crores</option>
                                 </select>
                                 <span style={{ color: '#94a3b8' }}>-</span>
                                 <select 
@@ -124,10 +125,12 @@ export default function AdvancedFilterModal({ isOpen, onClose, filters, setFilte
                                     onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
                                 >
                                     <option value="">No max</option>
-                                    <option value="500000">$500,000</option>
-                                    <option value="1000000">$1,000,000</option>
-                                    <option value="2000000">$2,000,000</option>
-                                    <option value="3000000">$3,000,000+</option>
+                                    <option value="2500000">₹25 Lakhs</option>
+                                    <option value="5000000">₹50 Lakhs</option>
+                                    <option value="7500000">₹75 Lakhs</option>
+                                    <option value="10000000">₹1 Crore</option>
+                                    <option value="20000000">₹2 Crores</option>
+                                    <option value="50000000">₹5 Crores+</option>
                                 </select>
                             </div>
                         </div>
