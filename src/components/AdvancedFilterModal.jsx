@@ -68,8 +68,7 @@ export default function AdvancedFilterModal({ isOpen, onClose, filters, setFilte
                                 {[
                                     { id: 'for_sale', label: '🏷️ For Sale' },
                                     { id: 'for_rent', label: '🔑 For Rent' },
-                                    { id: 'for_lease', label: '📜 For Lease' },
-                                    { id: 'sold', label: 'Sold' }
+                                    { id: 'for_lease', label: '📜 For Lease' }
                                 ].map(type => (
                                     <label key={type.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', cursor: 'pointer', fontWeight: 600 }}>
                                         <input 

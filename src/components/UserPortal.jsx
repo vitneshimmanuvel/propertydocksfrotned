@@ -1679,7 +1679,6 @@ export default function UserPortal({
                                                 <option value="for_sale">🏷️ For Sale</option>
                                                 <option value="for_rent">🔑 For Rent</option>
                                                 <option value="for_lease">📜 For Lease</option>
-                                                <option value="sold">Sold</option>
                                             </select>
 
                                             <select className="realtor-select" value={advancedFilters.minPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minPrice: e.target.value }))}>
@@ -1772,7 +1771,6 @@ export default function UserPortal({
                                         <option value="for_sale">🏷️ For Sale</option>
                                         <option value="for_rent">🔑 For Rent</option>
                                         <option value="for_lease">📜 For Lease</option>
-                                        <option value="sold">Sold</option>
                                     </select>
 
                                     <select className="realtor-select" value={advancedFilters.minPrice} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, minPrice: e.target.value }))}>
