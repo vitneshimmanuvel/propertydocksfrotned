@@ -64,17 +64,22 @@ export default function AdvancedFilterModal({ isOpen, onClose, filters, setFilte
                             <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '8px' }}>
                                 Transaction Type
                             </label>
-                            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-                                {['for_sale', 'for_rent', 'sold'].map(type => (
-                                    <label key={type} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.9rem', cursor: 'pointer', fontWeight: 500 }}>
+                            <div style={{ display: 'flex', gap: '14px', alignItems: 'center', flexWrap: 'wrap' }}>
+                                {[
+                                    { id: 'for_sale', label: '🏷️ For Sale' },
+                                    { id: 'for_rent', label: '🔑 For Rent' },
+                                    { id: 'for_lease', label: '📜 For Lease' },
+                                    { id: 'sold', label: 'Sold' }
+                                ].map(type => (
+                                    <label key={type.id} style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.88rem', cursor: 'pointer', fontWeight: 600 }}>
                                         <input 
                                             type="radio" 
                                             name="transType" 
-                                            checked={filters.transactionType === type}
-                                            onChange={() => setFilters(prev => ({ ...prev, transactionType: type }))}
-                                            style={{ accentColor: '#921214' }}
+                                            checked={filters.transactionType === type.id}
+                                            onChange={() => setFilters(prev => ({ ...prev, transactionType: type.id }))}
+                                            style={{ accentColor: type.id === 'for_lease' ? '#7c3aed' : type.id === 'for_rent' ? '#0284c7' : '#921214' }}
                                         />
-                                        {type === 'for_sale' ? 'For sale' : type === 'for_rent' ? 'For rent' : 'Sold'}
+                                        {type.label}
                                     </label>
                                 ))}
                             </div>
@@ -102,38 +107,156 @@ export default function AdvancedFilterModal({ isOpen, onClose, filters, setFilte
                         {/* Price Range */}
                         <div style={{ gridColumn: 'span 2' }}>
                             <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '8px' }}>
-                                Price Range
+                                {filters.transactionType === 'for_rent' 
+                                    ? 'Monthly Rent Budget (₹/mo)' 
+                                    : filters.transactionType === 'for_lease'
+                                    ? 'Total Refundable Lease Amount (₹)'
+                                    : 'Price Range'}
                             </label>
                             <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-                                <select 
-                                    className="realtor-select"
-                                    value={filters.minPrice || ''}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
-                                >
-                                    <option value="">No min</option>
-                                    <option value="1000000">₹10 Lakhs</option>
-                                    <option value="2500000">₹25 Lakhs</option>
-                                    <option value="5000000">₹50 Lakhs</option>
-                                    <option value="7500000">₹75 Lakhs</option>
-                                    <option value="10000000">₹1 Crore</option>
-                                    <option value="20000000">₹2 Crores</option>
-                                </select>
-                                <span style={{ color: '#94a3b8' }}>-</span>
-                                <select 
-                                    className="realtor-select"
-                                    value={filters.maxPrice || ''}
-                                    onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
-                                >
-                                    <option value="">No max</option>
-                                    <option value="2500000">₹25 Lakhs</option>
-                                    <option value="5000000">₹50 Lakhs</option>
-                                    <option value="7500000">₹75 Lakhs</option>
-                                    <option value="10000000">₹1 Crore</option>
-                                    <option value="20000000">₹2 Crores</option>
-                                    <option value="50000000">₹5 Crores+</option>
-                                </select>
+                                {filters.transactionType === 'for_rent' ? (
+                                    <>
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.minPrice || ''}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
+                                        >
+                                            <option value="">No min</option>
+                                            <option value="5000">₹5,000 / mo</option>
+                                            <option value="10000">₹10,000 / mo</option>
+                                            <option value="15000">₹15,000 / mo</option>
+                                            <option value="25000">₹25,000 / mo</option>
+                                            <option value="50000">₹50,000 / mo</option>
+                                            <option value="100000">₹1,00,000 / mo</option>
+                                        </select>
+                                        <span style={{ color: '#94a3b8' }}>-</span>
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.maxPrice || ''}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
+                                        >
+                                            <option value="">No max</option>
+                                            <option value="10000">₹10,000 / mo</option>
+                                            <option value="15000">₹15,000 / mo</option>
+                                            <option value="25000">₹25,000 / mo</option>
+                                            <option value="35000">₹35,000 / mo</option>
+                                            <option value="50000">₹50,000 / mo</option>
+                                            <option value="100000">₹1,00,000 / mo</option>
+                                            <option value="200000">₹2,00,000+ / mo</option>
+                                        </select>
+                                    </>
+                                ) : filters.transactionType === 'for_lease' ? (
+                                    <>
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.minPrice || ''}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
+                                        >
+                                            <option value="">No min</option>
+                                            <option value="200000">₹2 Lakhs</option>
+                                            <option value="500000">₹5 Lakhs</option>
+                                            <option value="1000000">₹10 Lakhs</option>
+                                            <option value="1500000">₹15 Lakhs</option>
+                                            <option value="2500000">₹25 Lakhs</option>
+                                            <option value="5000000">₹50 Lakhs</option>
+                                        </select>
+                                        <span style={{ color: '#94a3b8' }}>-</span>
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.maxPrice || ''}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
+                                        >
+                                            <option value="">No max</option>
+                                            <option value="500000">₹5 Lakhs</option>
+                                            <option value="1000000">₹10 Lakhs</option>
+                                            <option value="1500000">₹15 Lakhs</option>
+                                            <option value="2500000">₹25 Lakhs</option>
+                                            <option value="5000000">₹50 Lakhs</option>
+                                            <option value="10000000">₹1 Crore+</option>
+                                        </select>
+                                    </>
+                                ) : (
+                                    <>
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.minPrice || ''}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, minPrice: e.target.value }))}
+                                        >
+                                            <option value="">No min</option>
+                                            <option value="1000000">₹10 Lakhs</option>
+                                            <option value="2500000">₹25 Lakhs</option>
+                                            <option value="5000000">₹50 Lakhs</option>
+                                            <option value="7500000">₹75 Lakhs</option>
+                                            <option value="10000000">₹1 Crore</option>
+                                            <option value="20000000">₹2 Crores</option>
+                                        </select>
+                                        <span style={{ color: '#94a3b8' }}>-</span>
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.maxPrice || ''}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, maxPrice: e.target.value }))}
+                                        >
+                                            <option value="">No max</option>
+                                            <option value="2500000">₹25 Lakhs</option>
+                                            <option value="5000000">₹50 Lakhs</option>
+                                            <option value="7500000">₹75 Lakhs</option>
+                                            <option value="10000000">₹1 Crore</option>
+                                            <option value="20000000">₹2 Crores</option>
+                                            <option value="50000000">₹5 Crores+</option>
+                                        </select>
+                                    </>
+                                )}
                             </div>
                         </div>
+
+                        {/* Optional Furnishing & Tenant filters for rentals and lease */}
+                        {(filters.transactionType === 'for_rent' || filters.transactionType === 'for_lease') && (
+                            <>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '8px' }}>
+                                        Furnishing
+                                    </label>
+                                    <select 
+                                        className="realtor-select"
+                                        value={filters.furnishing || 'any'}
+                                        onChange={(e) => setFilters(prev => ({ ...prev, furnishing: e.target.value }))}
+                                    >
+                                        <option value="any">Any</option>
+                                        <option value="Fully Furnished">Fully Furnished</option>
+                                        <option value="Semi-Furnished">Semi-Furnished</option>
+                                        <option value="Unfurnished">Unfurnished</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label style={{ fontSize: '0.85rem', fontWeight: '700', color: '#334155', display: 'block', marginBottom: '8px' }}>
+                                        {filters.transactionType === 'for_lease' ? 'Lease Tenure' : 'Tenants'}
+                                    </label>
+                                    {filters.transactionType === 'for_lease' ? (
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.leaseYears || 'any'}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, leaseYears: e.target.value }))}
+                                        >
+                                            <option value="any">Any Tenure</option>
+                                            <option value="1">1 Year</option>
+                                            <option value="2">2 Years</option>
+                                            <option value="3">3 Years</option>
+                                            <option value="5">5 Years</option>
+                                        </select>
+                                    ) : (
+                                        <select 
+                                            className="realtor-select"
+                                            value={filters.preferredTenants || 'any'}
+                                            onChange={(e) => setFilters(prev => ({ ...prev, preferredTenants: e.target.value }))}
+                                        >
+                                            <option value="any">Any</option>
+                                            <option value="Family">Family Only</option>
+                                            <option value="Bachelors">Bachelors Allowed</option>
+                                        </select>
+                                    )}
+                                </div>
+                            </>
+                        )}
 
                         {/* Bedrooms */}
                         <div>

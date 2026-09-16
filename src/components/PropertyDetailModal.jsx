@@ -50,7 +50,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
         if (onCopyLink) {
             onCopyLink(listing, e);
         } else {
-            const shareUrl = `${window.location.origin}${window.location.pathname}?property=${encodeURIComponent(listing.id)}`;
+            const shareUrl = `${window.location.origin}/properties/${encodeURIComponent(listing.id)}`;
             if (navigator.clipboard) navigator.clipboard.writeText(shareUrl);
         }
     };
@@ -82,14 +82,24 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
         setActiveMediaIndex(prev => (prev < mediaList.length - 1 ? prev + 1 : 0));
     };
 
+    const isLease = listing.transactionType === 'for_lease' || listing.transactionType === 'lease' || listing.category === 'bogithu' || (listing.bogithuAmount && Number(listing.bogithuAmount) > 0);
+    const isRent = !isLease && (listing.transactionType === 'for_rent' || (listing.rentAmount && Number(listing.rentAmount) > 0));
+
+    const currentMediaUrl = typeof mediaList[activeMediaIndex] === 'string' 
+        ? mediaList[activeMediaIndex] 
+        : (mediaList[activeMediaIndex]?.url || defaultFallbackImages[0]);
+    const isCurrentVideo = (typeof mediaList[activeMediaIndex] === 'object' && mediaList[activeMediaIndex].type === 'video') ||
+        (typeof mediaList[activeMediaIndex] === 'string' && (mediaList[activeMediaIndex].includes('.mp4') || mediaList[activeMediaIndex].includes('youtube') || mediaList[activeMediaIndex].includes('youtu.be')));
+    const sideThumbnails = mediaList.slice(1, 5);
+
     const formatPriceDisplay = () => {
         if (!listing) return null;
-        if (listing.category === 'bogithu' && listing.bogithuAmount && Number(listing.bogithuAmount) > 0) {
-            const amt = Number(listing.bogithuAmount);
+        if (isLease) {
+            const amt = Number(listing.bogithuAmount || 0);
             const yrs = listing.bogithuYears ? ` for ${listing.bogithuYears} Years` : '';
-            return `₹${amt.toLocaleString('en-IN')}${yrs} (Lease)`;
+            return `₹${amt.toLocaleString('en-IN')}${yrs} (100% Refundable Lease)`;
         }
-        if (listing.rentAmount && Number(listing.rentAmount) > 0) {
+        if (isRent) {
             return `₹${Number(listing.rentAmount).toLocaleString('en-IN')} / month`;
         }
         if (listing.price && Number(listing.price) > 0) {
@@ -161,15 +171,26 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                                 </>
                             ) : (
                                 <>
-                                    <Share2 size={14} /> Copy Share Link
+                                    <Share2 size={14} /> Share
                                 </>
                             )}
                         </button>
                         <button 
-                            onClick={onClose} 
-                            style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#64748b', marginLeft: '4px' }}
+                            className="btn-realtor-filter" 
+                            onClick={() => onToggleFavorite(listing.id)}
+                            style={{ 
+                                padding: '6px 14px', 
+                                fontSize: '0.82rem', 
+                                borderRadius: '20px', 
+                                cursor: 'pointer',
+                                color: isFavorite(listing.id) ? '#921214' : '#0f172a',
+                                borderColor: isFavorite(listing.id) ? '#921214' : '#cbd5e1'
+                            }}
                         >
-                            <X size={22} />
+                            <Heart size={14} fill={isFavorite(listing.id) ? "#921214" : "none"} /> Save
+                        </button>
+                        <button className="realtor-modal-close" onClick={onClose} style={{ marginLeft: '12px', background: 'none', border: 'none', cursor: 'pointer', color: '#64748b' }}>
+                            <X size={20} />
                         </button>
                     </div>
                 </div>
@@ -180,23 +201,54 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                         {listing.title || listing.name || listing.address || 'Property Details'}
                     </h1>
 
-                    {/* 5-Photo Gallery Grid matching user's screenshot */}
+                    {/* Top Media Grid Layout */}
                     <div className="realtor-gallery-grid">
-                        <div className="realtor-gallery-main" style={{ cursor: 'pointer', position: 'relative' }}>
-                            {mediaList[0] && (typeof mediaList[0] === 'object' && mediaList[0].type === 'video' || (typeof mediaList[0] === 'string' && (mediaList[0].includes('.mp4') || mediaList[0].includes('youtube') || mediaList[0].includes('youtu.be')))) ? (
-                                <UniversalVideoPlayer url={typeof mediaList[0] === 'string' ? mediaList[0] : mediaList[0].url} autoPlay={false} controls={true} style={{ borderRadius: '0' }} />
+                        {/* Main Large Media */}
+                        <div 
+                            className="realtor-gallery-main" 
+                            onClick={() => !isCurrentVideo && openLightbox(0)}
+                            style={{ position: 'relative', cursor: isCurrentVideo ? 'default' : 'pointer' }}
+                        >
+                            {isCurrentVideo ? (
+                                <UniversalVideoPlayer 
+                                    url={currentMediaUrl} 
+                                    autoPlay={true} 
+                                    controls={true} 
+                                    style={{ width: '100%', height: '100%', minHeight: '380px', borderRadius: '8px' }} 
+                                />
                             ) : (
-                                <img src={mediaList[0] ? (typeof mediaList[0] === 'string' ? mediaList[0] : mediaList[0].url) : defaultFallbackImages[0]} alt={listing.name} onClick={() => openLightbox(0)} />
+                                <img src={currentMediaUrl} alt={listing.name || "Property"} />
+                            )}
+                            
+                            {/* Previous / Next Media Controls */}
+                            {mediaList.length > 1 && !isCurrentVideo && (
+                                <>
+                                    <button 
+                                        className="realtor-gallery-nav prev"
+                                        onClick={handlePrevMedia}
+                                    >
+                                        <ChevronLeft size={20} />
+                                    </button>
+                                    <button 
+                                        className="realtor-gallery-nav next"
+                                        onClick={handleNextMedia}
+                                    >
+                                        <ChevronRight size={20} />
+                                    </button>
+                                </>
                             )}
                         </div>
 
-                        {mediaList.slice(1, 5).map((item, idx) => {
-                            const mediaUrl = typeof item === 'string' ? item : item.url;
-                            const isVid = (typeof item === 'object' && item.type === 'video') || (typeof item === 'string' && (item.includes('.mp4') || item.includes('youtube') || item.includes('youtu.be')));
+                        {/* 4 Small Side Thumbnails */}
+                        {sideThumbnails.map((media, idx) => {
+                            const mediaUrl = typeof media === 'string' ? media : (media.url || '');
+                            const isVid = (typeof media === 'object' && media.type === 'video') || 
+                                (typeof media === 'string' && (media.includes('.mp4') || media.includes('youtube') || media.includes('youtu.be')));
+                            
                             return (
                                 <div 
                                     key={idx} 
-                                    className="realtor-gallery-item" 
+                                    className="realtor-gallery-thumb"
                                     style={{ position: 'relative', cursor: 'pointer', overflow: 'hidden' }}
                                 >
                                     {isVid ? (
@@ -207,9 +259,9 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                                         <img src={mediaUrl} alt={`Gallery ${idx + 1}`} onClick={() => openLightbox(idx + 1)} />
                                     )}
 
-                                    {idx === 3 && (
-                                        <div className="realtor-gallery-overlay-badge" onClick={(e) => { e.stopPropagation(); openLightbox(0); }}>
-                                            📷 +{mediaList.length > 5 ? mediaList.length - 5 + 34 : 38}
+                                    {idx === 3 && mediaList.length > 5 && (
+                                        <div className="realtor-gallery-overlay-badge" onClick={(e) => { e.stopPropagation(); openLightbox(4); }}>
+                                            📷 +{mediaList.length - 5}
                                         </div>
                                     )}
                                 </div>
@@ -222,8 +274,8 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                         {/* Left Details Panel */}
                         <div>
                             {/* Verification Badge */}
-                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#0284c7', color: '#ffffff', fontSize: '0.75rem', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '12px' }}>
-                                <CheckCircle2 size={13} /> Verified Legal Property
+                            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: isLease ? '#7c3aed' : (isRent ? '#059669' : '#0284c7'), color: '#ffffff', fontSize: '0.75rem', fontWeight: 700, padding: '4px 12px', borderRadius: '20px', marginBottom: '12px' }}>
+                                <CheckCircle2 size={13} /> {isLease ? '📜 Verified Long-Term Lease' : (isRent ? '🔑 Verified Rental Property' : 'Verified Legal Property')}
                             </div>
 
                             {/* Price (ONLY if available) */}
@@ -238,7 +290,7 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                             </p>
 
                             {/* Key Metrics Pill Grid */}
-                            <div className="realtor-metrics-row" style={{ display: 'flex', gap: '24px', padding: '16px 0', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', marginBottom: '24px', flexWrap: 'wrap' }}>
+                            <div className="realtor-metrics-row" style={{ display: 'flex', gap: '24px', padding: '16px 0', borderTop: '1px solid #e2e8f0', borderBottom: '1px solid #e2e8f0', marginBottom: '20px', flexWrap: 'wrap' }}>
                                 <div>
                                     <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', fontWeight: 700 }}>BEDROOMS</span>
                                     <strong style={{ fontSize: '1.15rem', color: '#0f172a' }}>{listing.beds || 3} Beds</strong>
@@ -249,33 +301,149 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                                 </div>
                                 <div>
                                     <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', fontWeight: 700 }}>PROPERTY SIZE</span>
-                                    <strong style={{ fontSize: '1.15rem', color: '#0f172a' }}>{listing.sqft || '2,400'} sqft</strong>
+                                    <strong style={{ fontSize: '1.15rem', color: '#0f172a' }}>{listing.sqft || '1,500'} sqft</strong>
                                 </div>
                                 <div>
-                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', fontWeight: 700 }}>TYPE</span>
-                                    <strong style={{ fontSize: '1.15rem', color: '#0f172a', textTransform: 'capitalize' }}>{listing.category ? listing.category.replace('_', ' ') : 'Single Family'}</strong>
+                                    <span style={{ fontSize: '0.75rem', color: '#64748b', display: 'block', fontWeight: 700 }}>TRANSACTION</span>
+                                    <strong style={{ fontSize: '1.15rem', color: isLease ? '#7c3aed' : (isRent ? '#059669' : '#0284c7'), textTransform: 'capitalize' }}>{isLease ? 'Long-term Lease' : (isRent ? 'Rental' : 'For Sale')}</strong>
                                 </div>
                             </div>
 
+                            {/* Dedicated Lease Specifications Showcase Card */}
+                            {isLease && (
+                                <div style={{ background: '#f5f3ff', border: '1px solid #ddd6fe', borderRadius: '10px', padding: '18px', marginBottom: '24px' }}>
+                                    <h3 style={{ margin: '0 0 14px 0', fontSize: '1rem', fontWeight: 800, color: '#6d28d9', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        📜 Lease Terms & Specifications
+                                    </h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>TOTAL LEASE AMOUNT</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#7c3aed' }}>₹{Number(listing.bogithuAmount || 0).toLocaleString('en-IN')}<span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#059669', display: 'block' }}>100% Refundable</span></strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>LEASE TENURE</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.bogithuYears ? `${listing.bogithuYears} Years` : (listing.leaseDuration || '2 Years')}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>MONTHLY RENT</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#059669' }}>₹0 (No Monthly Rent)</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>MAINTENANCE</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.maintenanceAmount && Number(listing.maintenanceAmount) > 0 ? `₹${Number(listing.maintenanceAmount).toLocaleString('en-IN')}/mo` : '₹0 (Nil / Included)'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>LOCK-IN PERIOD</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.lockInPeriod || '1 Year'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>REFUND NOTICE</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.noticePeriod || '2 Months'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>FURNISHING</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.furnishing || 'Semi-Furnished'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>AVAILABLE FROM</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.availableFrom || 'Immediate'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>PREFERRED OCCUPANTS</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.preferredTenants || 'Family / Bachelors'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #ede9fe' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>PARKING FACILITY</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.parking || 'Car & Bike Parking'}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {/* Dedicated Rental Specifications Showcase Card */}
+                            {isRent && (
+                                <div style={{ background: '#f0fdf4', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '18px', marginBottom: '24px' }}>
+                                    <h3 style={{ margin: '0 0 14px 0', fontSize: '1rem', fontWeight: 800, color: '#166534', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                                        🔑 Rental Terms & Property Information
+                                    </h3>
+                                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: '14px' }}>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>MONTHLY RENT</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#15803d' }}>₹{Number(listing.rentAmount || 0).toLocaleString('en-IN')}<span style={{ fontSize: '0.75rem', fontWeight: 500 }}>/mo</span></strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>SECURITY ADVANCE</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.depositAmount ? `₹${Number(listing.depositAmount).toLocaleString('en-IN')}` : 'Advance on Request'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>MAINTENANCE</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.maintenanceAmount && Number(listing.maintenanceAmount) > 0 ? `₹${Number(listing.maintenanceAmount).toLocaleString('en-IN')}/mo` : 'Included in Rent'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>FURNISHING</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.furnishing || 'Semi-Furnished'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>AVAILABLE FROM</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.availableFrom || 'Immediate'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>PREFERRED TENANTS</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.preferredTenants || 'Family / Bachelors'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>LEASE DURATION</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.leaseDuration || '11 Months'}</strong>
+                                        </div>
+                                        <div style={{ background: '#ffffff', padding: '10px 14px', borderRadius: '8px', border: '1px solid #dcfce7' }}>
+                                            <span style={{ fontSize: '0.72rem', color: '#64748b', display: 'block', fontWeight: 700 }}>PARKING FACILITY</span>
+                                            <strong style={{ fontSize: '1.05rem', color: '#0f172a' }}>{listing.parking || 'Car & Bike Parking'}</strong>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
                             {/* Description */}
                             <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', marginBottom: '12px' }}>Property Description</h3>
-                            <p style={{ fontSize: '0.95rem', lineHeight: '1.7', color: '#475569', marginBottom: '24px' }}>
-                                {listing.description || 'Stunning legal-verified residential property in high-demand location with clear parent document title tracing, 30-year EC verification, approved DTCP layout plan, clear road connectivity, and immediate registration suitability.'}
+                            <p style={{ fontSize: '0.95rem', lineHeight: '1.7', color: '#475569', marginBottom: '24px', whiteSpace: 'pre-line' }}>
+                                {listing.description || (
+                                    isLease
+                                        ? 'Prime residential property available for long-term lease. Upfront lump sum deposit is 100% refundable to the tenant upon vacating. Zero monthly rent, independent water/EB facilities, and immediate peaceful occupancy.'
+                                        : isRent
+                                            ? 'Well-maintained rental property located in prime residential locality with 24/7 water supply, separate electricity sub-meter, clear road access, peaceful family surroundings, and immediate occupancy.'
+                                            : 'Stunning legal-verified residential property in high-demand location with clear parent document title tracing, 30-year EC verification, approved DTCP layout plan, clear road connectivity, and immediate registration suitability.'
+                                )}
                             </p>
 
                             {/* Verification & Legal Highlights */}
-                            <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', marginBottom: '12px' }}>Legal & Property Highlights</h3>
+                            <h3 style={{ fontSize: '1.15rem', fontWeight: '700', color: '#0f172a', marginBottom: '12px' }}>
+                                {isLease ? 'Lease & Living Highlights' : (isRent ? 'Rental & Living Highlights' : 'Legal & Property Highlights')}
+                            </h3>
                             <div className="realtor-legal-highlights-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '32px' }}>
-                                {[
+                                {(isLease ? [
+                                    '100% Refundable Lease Deposit',
+                                    'Zero Monthly Rent (Only Maintenance if any)',
+                                    'Standard Registered Lease Agreement',
+                                    '24/7 Borewell & Drinking Water Supply',
+                                    'Individual Electricity Sub-Meter Connection',
+                                    'Direct Landlord Handover & Agreement'
+                                ] : isRent ? [
+                                    '24/7 Borewell / Cauvery Water Supply',
+                                    'Individual Electricity Sub-Meter',
+                                    'Direct Owner Contact (No Brokerage)',
+                                    'Peaceful & Safe Residential Colony',
+                                    'Standard 11-Month Rental Agreement',
+                                    'Immediate Handover / Ready to Move'
+                                ] : [
                                     '100% Parent Title Verification',
                                     'Encumbrance Certificate (EC) Clear',
                                     'DTCP / CMDA Approved Layout',
                                     'Patta & Chitta Transfer Assistance',
                                     'Clear Water & Power Supply Line',
                                     'Immediate Sub-Registrar Booking'
-                                ].map((feat, i) => (
+                                ]).map((feat, i) => (
                                     <div key={i} style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.9rem', color: '#334155' }}>
-                                        <CheckCircle2 size={18} color="#00a2bb" /> {feat}
+                                        <CheckCircle2 size={18} color={isLease ? "#7c3aed" : "#00a2bb"} /> {feat}
                                     </div>
                                 ))}
                             </div>
@@ -285,15 +453,15 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                         <div>
                             <div className="realtor-cta-card">
                                 <h3 style={{ fontSize: '1.1rem', fontWeight: '700', color: '#0f172a', marginBottom: '8px' }}>
-                                    Interested in touring this property?
+                                    {isLease ? 'Interested in leasing this property?' : (isRent ? 'Interested in renting this property?' : 'Interested in touring this property?')}
                                 </h3>
                                 <p style={{ fontSize: '0.85rem', color: '#64748b', marginBottom: '20px' }}>
-                                    Connect directly with the Property Docks verified representative or owner for a walkthrough.
+                                    {isLease ? 'Connect directly with the property owner to inspect the property or discuss lease agreement terms.' : (isRent ? 'Connect directly with the property owner to schedule a house visit or discuss rental terms.' : 'Connect directly with the Property Docks verified representative or owner for a walkthrough.')}
                                 </p>
 
                                 <div style={{ background: '#f8fafc', border: '1px solid #e2e8f0', borderRadius: '8px', padding: '14px', marginBottom: '16px' }}>
                                     <p style={{ margin: '0 0 4px 0', fontSize: '0.9rem', fontWeight: 700, color: '#0f172a' }}>
-                                        {listing.contactName || 'Verified Owner'}
+                                        {listing.contactName || 'Verified Owner / Landlord'}
                                     </p>
                                     <p style={{ margin: 0, fontSize: '0.85rem', color: '#921214', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '6px' }}>
                                         <Phone size={14} /> {listing.contactPhone || '+91 98765 43210'}
@@ -303,9 +471,9 @@ export default function PropertyDetailModal({ listing, isOpen, onClose, onToggle
                                 <button 
                                     className="btn-request-showing"
                                     onClick={() => onRequestShowing(listing)}
-                                    style={{ width: '100%', marginBottom: '10px' }}
+                                    style={{ width: '100%', marginBottom: '10px', background: isLease ? '#7c3aed' : undefined }}
                                 >
-                                    Request a showing
+                                    {isLease ? 'Request a Lease Visit / Inspection' : (isRent ? 'Request a Rental Visit / Showing' : 'Request a showing')}
                                 </button>
 
                                 <button 

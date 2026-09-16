@@ -151,11 +151,34 @@ export async function uploadVideo(file) {
     return response.json();
 }
 
+// --- Properties / Listings ---
+export async function fetchProperties() {
+    return apiRequest('/properties');
+}
+
+export async function fetchProperty(id) {
+    return apiRequest(`/properties/${encodeURIComponent(id)}`);
+}
+
+// --- Enquiries / Inquiries ---
+export async function createEnquiry(enquiry) {
+    return apiRequest('/enquiry', {
+        method: 'POST',
+        body: JSON.stringify(enquiry)
+    });
+}
+export const createInquiry = createEnquiry;
+
+export async function fetchEnquiries() {
+    return apiRequest('/enquiry');
+}
+export const fetchInquiries = fetchEnquiries;
+
 // --- Property Views & Clicks Tracking ---
 export async function recordPropertyView(id) {
     if (!id) return;
     try {
-        return await apiRequest(`/listings/${encodeURIComponent(id)}/view`, {
+        return await apiRequest(`/properties/${encodeURIComponent(id)}/view`, {
             method: 'POST'
         });
     } catch (err) {
@@ -166,7 +189,7 @@ export async function recordPropertyView(id) {
 export async function recordPropertyClick(id) {
     if (!id) return;
     try {
-        return await apiRequest(`/listings/${encodeURIComponent(id)}/click`, {
+        return await apiRequest(`/properties/${encodeURIComponent(id)}/click`, {
             method: 'POST'
         });
     } catch (err) {
@@ -178,3 +201,4 @@ export async function recordPropertyClick(id) {
 export async function checkHealth() {
     return apiRequest('/health');
 }
+

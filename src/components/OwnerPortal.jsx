@@ -191,8 +191,17 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
         lng: null,
         price: '',
         rentAmount: '',
+        depositAmount: '',
+        maintenanceAmount: '',
+        furnishing: 'Semi-Furnished',
+        availableFrom: 'Immediate',
+        preferredTenants: 'Family or Bachelors',
+        leaseDuration: '11 Months',
+        parking: 'Car & Bike',
+        lockInPeriod: '1 Year',
+        noticePeriod: '2 Months',
         bogithuAmount: '',
-        bogithuYears: '',
+        bogithuYears: '2',
         sqft: '',
         beds: '',
         baths: '',
@@ -278,9 +287,11 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
 
     const handleEditProperty = (prop) => {
         setEditingId(prop.id);
+        const isLease = prop.transactionType === 'for_lease' || prop.transactionType === 'lease' || prop.category === 'bogithu' || (prop.bogithuAmount && Number(prop.bogithuAmount) > 0);
+        const isRent = prop.transactionType === 'for_rent' || (prop.rentAmount && Number(prop.rentAmount) > 0);
         setFormData({
             category: prop.category || 'residential',
-            transactionType: prop.transactionType || 'for_sale',
+            transactionType: isLease ? 'for_lease' : (isRent ? 'for_rent' : 'for_sale'),
             title: prop.title || '',
             location: prop.location || '',
             street: prop.street || '',
@@ -290,8 +301,17 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
             lng: prop.lng || null,
             price: prop.price || '',
             rentAmount: prop.rentAmount || '',
+            depositAmount: prop.depositAmount || '',
+            maintenanceAmount: prop.maintenanceAmount || '',
+            furnishing: prop.furnishing || 'Semi-Furnished',
+            availableFrom: prop.availableFrom || 'Immediate',
+            preferredTenants: prop.preferredTenants || 'Family or Bachelors',
+            leaseDuration: prop.leaseDuration || '11 Months',
+            parking: prop.parking || 'Car & Bike',
+            lockInPeriod: prop.lockInPeriod || '1 Year',
+            noticePeriod: prop.noticePeriod || '2 Months',
             bogithuAmount: prop.bogithuAmount || '',
-            bogithuYears: prop.bogithuYears || '',
+            bogithuYears: prop.bogithuYears || '2',
             sqft: prop.sqft || '',
             beds: prop.beds || '',
             baths: prop.baths || '',
@@ -378,8 +398,17 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                 lng: null,
                 price: '',
                 rentAmount: '',
+                depositAmount: '',
+                maintenanceAmount: '',
+                furnishing: 'Semi-Furnished',
+                availableFrom: 'Immediate',
+                preferredTenants: 'Family or Bachelors',
+                leaseDuration: '11 Months',
+                parking: 'Car & Bike',
+                lockInPeriod: '1 Year',
+                noticePeriod: '2 Months',
                 bogithuAmount: '',
-                bogithuYears: '',
+                bogithuYears: '2',
                 sqft: '',
                 beds: '',
                 baths: '',
@@ -572,7 +601,7 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                             <option value="rental_house">Rental House</option>
                                             <option value="pg">PG Accommodation</option>
                                             <option value="room">Room</option>
-                                            <option value="bogithu">Bogithu (Lease)</option>
+                                            <option value="bogithu">Lease</option>
                                         </optgroup>
                                         <optgroup label="🏢 Commercial">
                                             <option value="commercial">Commercial Building</option>
@@ -592,7 +621,7 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                         {[
                                             { value: 'for_sale', label: '🏷️ For Sale' },
                                             { value: 'for_rent', label: '🔑 For Rent' },
-                                            { value: 'lease', label: '📋 Lease (Bogithu)' }
+                                            { value: 'for_lease', label: '📜 For Lease' }
                                         ].map(opt => (
                                             <button 
                                                 type="button" 
@@ -601,11 +630,11 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                                 style={{
                                                     flex: 1,
                                                     padding: '10px 8px',
-                                                    border: formData.transactionType === opt.value ? '2px solid #921214' : '1px solid var(--border-color)',
+                                                    border: (formData.transactionType === opt.value || (opt.value === 'for_lease' && formData.transactionType === 'lease')) ? '2px solid #921214' : '1px solid var(--border-color)',
                                                     borderRadius: 'var(--radius-md)',
-                                                    background: formData.transactionType === opt.value ? 'rgba(146,18,20,0.08)' : 'var(--bg-main)',
-                                                    color: formData.transactionType === opt.value ? '#921214' : 'var(--text-secondary)',
-                                                    fontWeight: formData.transactionType === opt.value ? 700 : 500,
+                                                    background: (formData.transactionType === opt.value || (opt.value === 'for_lease' && formData.transactionType === 'lease')) ? 'rgba(146,18,20,0.08)' : 'var(--bg-main)',
+                                                    color: (formData.transactionType === opt.value || (opt.value === 'for_lease' && formData.transactionType === 'lease')) ? '#921214' : 'var(--text-secondary)',
+                                                    fontWeight: (formData.transactionType === opt.value || (opt.value === 'for_lease' && formData.transactionType === 'lease')) ? 700 : 500,
                                                     fontSize: '0.85rem',
                                                     cursor: 'pointer',
                                                     transition: 'all 0.15s ease'
@@ -632,16 +661,148 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                 )}
 
                                 {formData.transactionType === 'for_rent' && (
-                                    <div className="form-group">
-                                        <label>Monthly Rent (₹) (Optional)</label>
-                                        <input type="number" name="rentAmount" value={formData.rentAmount} onChange={handleInputChange} placeholder="e.g. 15000 (Optional)" />
+                                    <div style={{ background: 'rgba(16, 185, 129, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#059669', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            🔑 Rental Pricing & Specification Details
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Monthly Rent (₹) <span style={{ color: '#ef4444' }}>*</span></label>
+                                                <input type="number" name="rentAmount" value={formData.rentAmount} onChange={handleInputChange} placeholder="e.g. 15000" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Security Deposit / Advance (₹)</label>
+                                                <input type="number" name="depositAmount" value={formData.depositAmount} onChange={handleInputChange} placeholder="e.g. 50000" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Maintenance (₹/mo)</label>
+                                                <input type="number" name="maintenanceAmount" value={formData.maintenanceAmount} onChange={handleInputChange} placeholder="e.g. 1500 (0 for Included)" />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Furnishing Status</label>
+                                                <select name="furnishing" value={formData.furnishing} onChange={handleInputChange}>
+                                                    <option value="Unfurnished">Unfurnished</option>
+                                                    <option value="Semi-Furnished">Semi-Furnished</option>
+                                                    <option value="Fully Furnished">Fully Furnished</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Available From</label>
+                                                <input type="text" name="availableFrom" value={formData.availableFrom} onChange={handleInputChange} placeholder="e.g. Immediate / Next Month" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Preferred Tenants</label>
+                                                <select name="preferredTenants" value={formData.preferredTenants} onChange={handleInputChange}>
+                                                    <option value="Family or Bachelors">Family or Bachelors (Any)</option>
+                                                    <option value="Family Only">Family Only</option>
+                                                    <option value="Bachelors Only">Bachelors Only</option>
+                                                    <option value="Company / Commercial">Company / Commercial</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Minimum Lease Term</label>
+                                                <select name="leaseDuration" value={formData.leaseDuration} onChange={handleInputChange}>
+                                                    <option value="11 Months">11 Months (Standard)</option>
+                                                    <option value="1 Year">1 Year</option>
+                                                    <option value="2 Years">2 Years</option>
+                                                    <option value="Flexible">Flexible / Short Term</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Parking Facility</label>
+                                                <select name="parking" value={formData.parking} onChange={handleInputChange}>
+                                                    <option value="Car & Bike">Car & 2-Wheeler (Covered)</option>
+                                                    <option value="2-Wheeler Only">2-Wheeler Only</option>
+                                                    <option value="Car Only">Car Parking Only</option>
+                                                    <option value="Open Street / None">Open Street / None</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
-                                {formData.transactionType === 'lease' && (
-                                    <div className="form-row">
-                                        <div className="form-group"><label>Lease/Bogithu Amount (₹) (Optional)</label><input type="number" name="bogithuAmount" value={formData.bogithuAmount} onChange={handleInputChange} placeholder="Optional" /></div>
-                                        <div className="form-group"><label>Duration (Years)</label><input type="number" name="bogithuYears" value={formData.bogithuYears} onChange={handleInputChange} placeholder="Optional" /></div>
+                                {(formData.transactionType === 'for_lease' || formData.transactionType === 'lease') && (
+                                    <div style={{ background: 'rgba(124, 58, 237, 0.05)', padding: '16px', borderRadius: '8px', border: '1px solid rgba(124, 58, 237, 0.28)', marginBottom: '16px', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                        <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                            📜 Long-term Lease Specifications (Upfront Lump Sum, 100% Refundable, No Monthly Rent)
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Total Lease Amount (₹) <span style={{ color: '#ef4444' }}>*</span></label>
+                                                <input type="number" name="bogithuAmount" value={formData.bogithuAmount} onChange={handleInputChange} placeholder="e.g. 1000000 (100% Refundable)" required />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Lease Duration (Years) <span style={{ color: '#ef4444' }}>*</span></label>
+                                                <input type="number" step="0.5" name="bogithuYears" value={formData.bogithuYears} onChange={handleInputChange} placeholder="e.g. 2 or 3" required />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Maintenance (₹/mo)</label>
+                                                <input type="number" name="maintenanceAmount" value={formData.maintenanceAmount} onChange={handleInputChange} placeholder="e.g. 1000 (0 if Nil)" />
+                                            </div>
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Lock-in Period</label>
+                                                <select name="lockInPeriod" value={formData.lockInPeriod} onChange={handleInputChange}>
+                                                    <option value="No Lock-in">No Lock-in Period</option>
+                                                    <option value="6 Months">6 Months</option>
+                                                    <option value="1 Year">1 Year (Standard)</option>
+                                                    <option value="2 Years">2 Years</option>
+                                                    <option value="Full Lease Period">Full Lease Period</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Refund Notice Period</label>
+                                                <select name="noticePeriod" value={formData.noticePeriod} onChange={handleInputChange}>
+                                                    <option value="1 Month">1 Month</option>
+                                                    <option value="2 Months">2 Months (Standard)</option>
+                                                    <option value="3 Months">3 Months</option>
+                                                    <option value="6 Months">6 Months</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Furnishing Status</label>
+                                                <select name="furnishing" value={formData.furnishing} onChange={handleInputChange}>
+                                                    <option value="Unfurnished">Unfurnished</option>
+                                                    <option value="Semi-Furnished">Semi-Furnished</option>
+                                                    <option value="Fully Furnished">Fully Furnished</option>
+                                                </select>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-row">
+                                            <div className="form-group">
+                                                <label>Available From</label>
+                                                <input type="text" name="availableFrom" value={formData.availableFrom} onChange={handleInputChange} placeholder="e.g. Immediate / Next Month" />
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Preferred Occupants</label>
+                                                <select name="preferredTenants" value={formData.preferredTenants} onChange={handleInputChange}>
+                                                    <option value="Family or Bachelors">Family or Bachelors (Any)</option>
+                                                    <option value="Family Only">Family Only</option>
+                                                    <option value="Bachelors Only">Bachelors Only</option>
+                                                    <option value="Company / Commercial">Company / Commercial</option>
+                                                </select>
+                                            </div>
+                                            <div className="form-group">
+                                                <label>Parking Facility</label>
+                                                <select name="parking" value={formData.parking} onChange={handleInputChange}>
+                                                    <option value="Car & Bike">Car & 2-Wheeler (Covered)</option>
+                                                    <option value="2-Wheeler Only">2-Wheeler Only</option>
+                                                    <option value="Car Only">Car Parking Only</option>
+                                                    <option value="Open Street / None">Open Street / None</option>
+                                                </select>
+                                            </div>
+                                        </div>
                                     </div>
                                 )}
 
@@ -839,7 +1000,7 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                     <option value="rental_house">Rental House</option>
                                     <option value="pg">PG Accommodation</option>
                                     <option value="room">Room</option>
-                                    <option value="bogithu">Bogithu (Lease)</option>
+                                    <option value="bogithu">Lease</option>
                                 </optgroup>
                                 <optgroup label="🏢 Commercial">
                                     <option value="commercial">Commercial Building</option>
@@ -917,9 +1078,11 @@ export default function OwnerPortal({ database, setDatabase, showToast, setRole,
                                                     )}
                                                 </div>
                                                 <div style={{ fontSize: '1.1rem', fontWeight: 700, color: 'var(--primary)' }}>
-                                                    {prop.category === 'bogithu' 
+                                                    {prop.transactionType === 'for_lease' || prop.transactionType === 'lease' || prop.category === 'bogithu' || (prop.bogithuAmount && Number(prop.bogithuAmount) > 0)
                                                         ? (prop.bogithuAmount ? `₹${Number(prop.bogithuAmount).toLocaleString('en-IN')}${prop.bogithuYears ? ` for ${prop.bogithuYears} Years` : ''} (Lease)` : 'Price on Request')
-                                                        : (prop.rentAmount ? `₹${Number(prop.rentAmount).toLocaleString('en-IN')} / mo` : (prop.price ? `₹${Number(prop.price).toLocaleString('en-IN')}` : 'Price on Request'))}
+                                                        : ((prop.transactionType === 'for_rent' || (prop.rentAmount && Number(prop.rentAmount) > 0))
+                                                            ? `₹${Number(prop.rentAmount).toLocaleString('en-IN')} / mo`
+                                                            : (prop.price ? `₹${Number(prop.price).toLocaleString('en-IN')}` : 'Price on Request'))}
                                                 </div>
                                             </div>
 

@@ -263,9 +263,9 @@ class MapRenderer {
                             ${plot.owner ? `<div>Owner: <em>${plot.owner}</em></div>` : ''}
                         `;
                     } else if (['rental_house', 'pg', 'room', 'bogithu'].includes(classification)) {
-                        const classLabel = classification.replace('_', ' ');
+                        const classLabel = classification === 'bogithu' ? 'Lease' : classification.replace('_', ' ');
                         const priceInfo = classification === 'bogithu' 
-                            ? `Bulk Amount: <strong>₹${Number(plot.bogithuAmount || 0).toLocaleString('en-IN')} for ${plot.bogithuYears || 0} Years</strong>`
+                            ? `Lease Amount: <strong>₹${Number(plot.bogithuAmount || 0).toLocaleString('en-IN')} for ${plot.bogithuYears || 0} Years</strong>`
                             : `Rent: <strong>₹${Number(plot.rentAmount || 0).toLocaleString('en-IN')} / month</strong>`;
                         
                         this.tooltip.innerHTML = `

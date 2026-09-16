@@ -329,6 +329,10 @@ export default function ClientsManager({
         setPropertyTypeTab(isComm ? 'commercial' : 'residential');
         setSelectedCategory(listing.category || (isComm ? 'commercial' : 'residential'));
         
+        const isLease = listing.transactionType === 'for_lease' || listing.transactionType === 'lease' || listing.category === 'bogithu' || (listing.bogithuAmount && Number(listing.bogithuAmount) > 0);
+        const isRent = listing.transactionType === 'for_rent' || (listing.rentAmount && Number(listing.rentAmount) > 0);
+        setSelectedTxnType(isLease ? 'for_lease' : (isRent ? 'for_rent' : 'for_sale'));
+        
         setLatInputVal(listing.lat ? String(listing.lat) : '');
         setLngInputVal(listing.lng ? String(listing.lng) : '');
 
@@ -395,9 +399,19 @@ export default function ClientsManager({
         const title = form.pTitle.value.trim();
         const category = form.pCategory.value;
         const transactionType = form.pTxn.value;
-        const price = selectedTxnType === 'for_sale' ? (parseFloat(form.pPrice?.value) || 0) : 0;
-        const rentAmount = selectedTxnType === 'for_rent' ? (parseFloat(form.pRent?.value) || 0) : 0;
-        const bogithuAmount = 0;
+        const price = transactionType === 'for_sale' ? (parseFloat(form.pPrice?.value) || 0) : 0;
+        const rentAmount = transactionType === 'for_rent' ? (parseFloat(form.pRent?.value) || 0) : 0;
+        const depositAmount = transactionType === 'for_rent' ? (parseFloat(form.pDeposit?.value) || 0) : 0;
+        const bogithuAmount = (transactionType === 'for_lease' || transactionType === 'lease') ? (parseFloat(form.pBogithuAmount?.value) || 0) : 0;
+        const bogithuYears = (transactionType === 'for_lease' || transactionType === 'lease') ? (parseInt(form.pBogithuYears?.value || 0, 10) || 0) : 0;
+        const maintenanceAmount = (transactionType === 'for_rent' || transactionType === 'for_lease' || transactionType === 'lease') ? (parseFloat(form.pMaintenance?.value) || 0) : 0;
+        const furnishing = form.pFurnishing ? form.pFurnishing.value : '';
+        const availableFrom = form.pAvailableFrom ? form.pAvailableFrom.value.trim() : '';
+        const preferredTenants = form.pPreferredTenants ? form.pPreferredTenants.value : '';
+        const leaseDuration = form.pLeaseDuration ? form.pLeaseDuration.value : (bogithuYears ? `${bogithuYears} Years` : '');
+        const lockInPeriod = form.pLockInPeriod ? form.pLockInPeriod.value : '';
+        const noticePeriod = form.pNoticePeriod ? form.pNoticePeriod.value : '';
+        const parking = form.pParking ? form.pParking.value : '';
         const sqft = form.pSqft?.value ? form.pSqft.value.trim() : '';
         const landArea = form.pLandArea ? form.pLandArea.value.trim() : '';
         const beds = parseInt(form.pBeds?.value || 0, 10);
@@ -434,7 +448,7 @@ export default function ClientsManager({
                 if (o.id === editingProperty.id) {
                     return {
                         ...o,
-                        title, category, transactionType, price, rentAmount, bogithuAmount, sqft, landArea, beds, baths, floors,
+                        title, category, transactionType, price, rentAmount, depositAmount, maintenanceAmount, furnishing, availableFrom, preferredTenants, leaseDuration, parking, bogithuAmount, bogithuYears, lockInPeriod, noticePeriod, sqft, landArea, beds, baths, floors,
                         location, street, landmark, pincode, locationPrivacy, description, lat, lng, status,
                         media: mediaItemsList,
                         internalDocuments: internalDocsList,
@@ -446,7 +460,7 @@ export default function ClientsManager({
         } else {
             const newProperty = {
                 id: 'prop_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5),
-                title, category, transactionType, price, rentAmount, bogithuAmount, sqft, landArea, beds, baths, floors,
+                title, category, transactionType, price, rentAmount, depositAmount, maintenanceAmount, furnishing, availableFrom, preferredTenants, leaseDuration, parking, bogithuAmount, bogithuYears, lockInPeriod, noticePeriod, sqft, landArea, beds, baths, floors,
                 location, street, landmark, pincode, locationPrivacy, description, lat, lng, status, 
                 media: mediaItemsList,
                 internalDocuments: internalDocsList,
@@ -884,10 +898,41 @@ export default function ClientsManager({
                                             <span style={{ fontSize: '0.74rem', color: 'var(--text-secondary)' }}>
                                                 📍 {listing.location || 'Location'} • {listing.category.toUpperCase().replace('_', ' ')}
                                             </span>
-                                            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', marginTop: '3px', flexWrap: 'wrap' }}>
-                                                <span style={{ fontSize: '0.82rem', fontWeight: 800, color: '#921214' }}>
-                                                    {listing.price ? `₹${Number(listing.price).toLocaleString('en-IN')}` : (listing.rentAmount ? `₹${Number(listing.rentAmount).toLocaleString('en-IN')}/m` : '—')}
+                                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '3px', flexWrap: 'wrap' }}>
+                                                <span style={{ fontSize: '0.84rem', fontWeight: 800, color: '#921214', display: 'inline-flex', alignItems: 'center', gap: '2px' }}>
+                                                    {listing.transactionType === 'for_lease' || listing.transactionType === 'lease' || listing.category === 'bogithu' || (listing.bogithuAmount && Number(listing.bogithuAmount) > 0) ? (
+                                                        <>₹{Number(listing.bogithuAmount || 0).toLocaleString('en-IN')}<span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#7c3aed' }}> (Lease)</span></>
+                                                    ) : (listing.transactionType === 'for_rent' || (listing.rentAmount && Number(listing.rentAmount) > 0)) ? (
+                                                        <>₹{Number(listing.rentAmount || 0).toLocaleString('en-IN')}<span style={{ fontSize: '0.72rem', fontWeight: 600, color: '#059669' }}>/mo</span></>
+                                                    ) : (
+                                                        listing.price ? `₹${Number(listing.price).toLocaleString('en-IN')}` : '—'
+                                                    )}
                                                 </span>
+                                                {(listing.transactionType === 'for_lease' || listing.transactionType === 'lease' || listing.category === 'bogithu' || (listing.bogithuAmount && Number(listing.bogithuAmount) > 0)) && (
+                                                    <span style={{ fontSize: '0.66rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(124, 58, 237, 0.15)', color: '#7c3aed', border: '1px solid rgba(124, 58, 237, 0.3)' }}>
+                                                        LEASE
+                                                    </span>
+                                                )}
+                                                {(listing.transactionType === 'for_rent' || (listing.rentAmount && Number(listing.rentAmount) > 0)) && (
+                                                    <span style={{ fontSize: '0.66rem', fontWeight: 800, padding: '2px 6px', borderRadius: '4px', background: 'rgba(16, 185, 129, 0.15)', color: '#059669', border: '1px solid rgba(16, 185, 129, 0.3)' }}>
+                                                        RENTAL
+                                                    </span>
+                                                )}
+                                                {listing.bogithuYears && (
+                                                    <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+                                                        • {listing.bogithuYears} Yrs Term
+                                                    </span>
+                                                )}
+                                                {listing.depositAmount && Number(listing.depositAmount) > 0 && (
+                                                    <span style={{ fontSize: '0.66rem', color: 'var(--text-muted)' }}>
+                                                        • Dep: ₹{Number(listing.depositAmount).toLocaleString('en-IN')}
+                                                    </span>
+                                                )}
+                                                {listing.furnishing && (
+                                                    <span style={{ fontSize: '0.66rem', color: 'var(--text-secondary)' }}>
+                                                        • {listing.furnishing}
+                                                    </span>
+                                                )}
                                                 <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '2px 8px', borderRadius: '10px', background: 'rgba(2, 132, 199, 0.12)', color: '#0284c7', border: '1px solid rgba(2, 132, 199, 0.25)', display: 'inline-flex', alignItems: 'center', gap: '4px' }}>
                                                     <Eye size={12} /> {Number(listing.viewsCount || listing.views || 0)} Views / Clicks
                                                 </span>
@@ -1175,25 +1220,188 @@ export default function ClientsManager({
                                         onChange={(e) => setSelectedTxnType(e.target.value)} 
                                         style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }}
                                     >
-                                        <option value="for_sale">For Sale</option>
-                                        <option value="for_rent">For Rent</option>
+                                        <option value="for_sale">🏷️ For Sale</option>
+                                        <option value="for_rent">🔑 For Rent</option>
+                                        <option value="for_lease">📜 For Lease</option>
                                     </select>
                                 </div>
                             </div>
 
-                            <div>
-                                {selectedTxnType === 'for_sale' ? (
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Sale Price (₹) (Optional)</label>
-                                        <input type="number" name="pPrice" defaultValue={editingProperty ? editingProperty.price : ''} placeholder="e.g. 4500000 (Optional)" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                            {/* Conditional Pricing & Specifications (Sale vs Rent vs Lease) */}
+                            {selectedTxnType === 'for_sale' && (
+                                <div>
+                                    <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Sale Price (₹) (Optional)</label>
+                                    <input type="number" name="pPrice" defaultValue={editingProperty ? editingProperty.price : ''} placeholder="e.g. 4500000 (Optional)" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                </div>
+                            )}
+
+                            {selectedTxnType === 'for_rent' && (
+                                <div style={{ background: 'rgba(16, 185, 129, 0.04)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(16, 185, 129, 0.25)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#059669', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        🔑 Rental Details & Pricing Specifications
                                     </div>
-                                ) : (
-                                    <div>
-                                        <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Monthly Rent (₹) (Optional)</label>
-                                        <input type="number" name="pRent" defaultValue={editingProperty ? editingProperty.rentAmount : ''} placeholder="e.g. 15000 (Optional)" style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+
+                                    {/* Rent, Deposit & Maintenance Row */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                                Monthly Rent (₹/mo) <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <input type="number" name="pRent" defaultValue={editingProperty ? editingProperty.rentAmount : ''} placeholder="e.g. 15000" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                                Security Deposit / Advance (₹)
+                                            </label>
+                                            <input type="number" name="pDeposit" defaultValue={editingProperty ? editingProperty.depositAmount : ''} placeholder="e.g. 50000" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                                Maintenance (₹/mo)
+                                            </label>
+                                            <input type="number" name="pMaintenance" defaultValue={editingProperty ? editingProperty.maintenanceAmount : ''} placeholder="e.g. 1500 (0 if Included)" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        </div>
                                     </div>
-                                )}
-                            </div>
+
+                                    {/* Furnishing, Available From, Preferred Tenants */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Furnishing Status</label>
+                                            <select name="pFurnishing" defaultValue={editingProperty ? editingProperty.furnishing : 'Semi-Furnished'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="Unfurnished">Unfurnished</option>
+                                                <option value="Semi-Furnished">Semi-Furnished</option>
+                                                <option value="Fully Furnished">Fully Furnished</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Available From</label>
+                                            <input type="text" name="pAvailableFrom" defaultValue={editingProperty ? editingProperty.availableFrom : 'Immediate'} placeholder="e.g. Immediate or Date" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Preferred Tenants</label>
+                                            <select name="pPreferredTenants" defaultValue={editingProperty ? editingProperty.preferredTenants : 'Family or Bachelors'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="Family or Bachelors">Family or Bachelors (Any)</option>
+                                                <option value="Family Only">Family Only</option>
+                                                <option value="Bachelors Only">Bachelors Only</option>
+                                                <option value="Company / Commercial">Company / Commercial</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Lease Duration & Parking Facility */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Minimum Lease Duration</label>
+                                            <select name="pLeaseDuration" defaultValue={editingProperty ? editingProperty.leaseDuration : '11 Months'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="11 Months">11 Months (Standard)</option>
+                                                <option value="1 Year">1 Year</option>
+                                                <option value="2 Years">2 Years</option>
+                                                <option value="3+ Years">3+ Years (Commercial)</option>
+                                                <option value="Flexible">Flexible / Short Term</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Parking Facility</label>
+                                            <select name="pParking" defaultValue={editingProperty ? editingProperty.parking : 'Car & Bike'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="Car & Bike">Car & 2-Wheeler (Covered)</option>
+                                                <option value="2-Wheeler Only">2-Wheeler Only</option>
+                                                <option value="Car Only">Car Parking Only</option>
+                                                <option value="Open Street / None">Open Street / None</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+                            )}
+
+                            {selectedTxnType === 'for_lease' && (
+                                <div style={{ background: 'rgba(124, 58, 237, 0.05)', padding: '14px', borderRadius: '8px', border: '1px solid rgba(124, 58, 237, 0.28)', display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                                    <div style={{ fontSize: '0.82rem', fontWeight: 800, color: '#7c3aed', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                        📜 Long-term Lease Specifications (Upfront Lump Sum, 100% Refundable, No Monthly Rent)
+                                    </div>
+
+                                    {/* Lease Amount, Duration & Maintenance */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr', gap: '10px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                                Total Lease Amount (₹) <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <input type="number" name="pBogithuAmount" defaultValue={editingProperty ? editingProperty.bogithuAmount : ''} placeholder="e.g. 1000000 (100% Refundable)" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                                Lease Duration (Years) <span style={{ color: '#ef4444' }}>*</span>
+                                            </label>
+                                            <input type="number" step="0.5" name="pBogithuYears" defaultValue={editingProperty ? (editingProperty.bogithuYears || 2) : 2} placeholder="e.g. 2 or 3" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                                Maintenance (₹/mo)
+                                            </label>
+                                            <input type="number" name="pMaintenance" defaultValue={editingProperty ? editingProperty.maintenanceAmount : ''} placeholder="e.g. 1000 (0 if Nil)" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none' }} />
+                                        </div>
+                                    </div>
+
+                                    {/* Lock-in Period, Notice Period & Furnishing */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Lock-in Period</label>
+                                            <select name="pLockInPeriod" defaultValue={editingProperty ? (editingProperty.lockInPeriod || '1 Year') : '1 Year'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="No Lock-in">No Lock-in Period</option>
+                                                <option value="6 Months">6 Months</option>
+                                                <option value="1 Year">1 Year (Standard)</option>
+                                                <option value="2 Years">2 Years</option>
+                                                <option value="Full Lease Period">Full Lease Period</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Refund Notice Period</label>
+                                            <select name="pNoticePeriod" defaultValue={editingProperty ? (editingProperty.noticePeriod || '2 Months') : '2 Months'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="1 Month">1 Month</option>
+                                                <option value="2 Months">2 Months (Standard)</option>
+                                                <option value="3 Months">3 Months</option>
+                                                <option value="6 Months">6 Months</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Furnishing Status</label>
+                                            <select name="pFurnishing" defaultValue={editingProperty ? editingProperty.furnishing : 'Semi-Furnished'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="Unfurnished">Unfurnished</option>
+                                                <option value="Semi-Furnished">Semi-Furnished</option>
+                                                <option value="Fully Furnished">Fully Furnished</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Available From, Preferred Occupants & Parking */}
+                                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '10px' }}>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Available From</label>
+                                            <input type="text" name="pAvailableFrom" defaultValue={editingProperty ? editingProperty.availableFrom : 'Immediate'} placeholder="e.g. Immediate or Date" style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }} />
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Preferred Occupants</label>
+                                            <select name="pPreferredTenants" defaultValue={editingProperty ? editingProperty.preferredTenants : 'Family or Bachelors'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="Family or Bachelors">Family or Bachelors (Any)</option>
+                                                <option value="Family Only">Family Only</option>
+                                                <option value="Bachelors Only">Bachelors Only</option>
+                                                <option value="Company / Commercial">Company / Commercial</option>
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label style={{ display: 'block', fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Parking Facility</label>
+                                            <select name="pParking" defaultValue={editingProperty ? editingProperty.parking : 'Car & Bike'} style={{ width: '100%', padding: '8px 10px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.82rem', outline: 'none' }}>
+                                                <option value="Car & Bike">Car & 2-Wheeler (Covered)</option>
+                                                <option value="2-Wheeler Only">2-Wheeler Only</option>
+                                                <option value="Car Only">Car Parking Only</option>
+                                                <option value="Open Street / None">Open Street / None</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div style={{ fontSize: '0.72rem', color: '#6d28d9', background: 'rgba(124, 58, 237, 0.08)', padding: '6px 10px', borderRadius: '5px' }}>
+                                        💡 <strong>Lease Note:</strong> The entire lease amount is 100% refundable to the tenant upon agreement completion. No monthly rent applies.
+                                    </div>
+                                </div>
+                            )}
 
                             {/* Dynamic Mode-Specific Fields */}
                             {propertyTypeTab === 'residential' ? (
@@ -1633,8 +1841,16 @@ export default function ClientsManager({
                             </div>
 
                             <div>
-                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>Property Description</label>
-                                <textarea name="pDesc" rows="3" defaultValue={editingProperty ? editingProperty.description : ''} placeholder="Write details about flooring, water facilities, compound walls, legal documentation, road width, etc..." style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', resize: 'none' }} />
+                                <label style={{ display: 'block', fontSize: '0.78rem', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+                                    Property Description (Plain Details & Terms)
+                                </label>
+                                <textarea 
+                                    name="pDesc" 
+                                    rows="3" 
+                                    defaultValue={editingProperty ? editingProperty.description : ''} 
+                                    placeholder={selectedTxnType === 'for_lease' ? "Write lease terms: 100% refundable lease amount, agreement tenure, refund notice period, maintenance, water/electricity details..." : selectedTxnType === 'for_rent' ? "Write rental details: water supply (Borewell/Cauvery), separate EB sub-meter, flooring, balcony, terrace access, house rules, advance negotiation, etc..." : "Write details about flooring, water facilities, compound walls, legal documentation, road width, etc..."} 
+                                    style={{ width: '100%', padding: '8px 12px', borderRadius: '6px', border: '1px solid var(--border-color)', background: 'var(--bg-main)', color: 'var(--text-primary)', fontSize: '0.85rem', outline: 'none', resize: 'none' }} 
+                                />
                             </div>
 
                             <button 

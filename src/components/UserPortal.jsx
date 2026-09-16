@@ -40,7 +40,7 @@ import GlobalMap from './GlobalMap';
 import AdvancedFilterModal from './AdvancedFilterModal';
 import PropertyDetailModal from './PropertyDetailModal';
 import { useJsApiLoader } from '@react-google-maps/api';
-import { saveFullDatabase, recordPropertyClick, recordPropertyView } from '../utils/api';
+import { saveFullDatabase, recordPropertyClick, recordPropertyView, createEnquiry } from '../utils/api';
 import { auth } from '../utils/firebase';
 import { onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 
@@ -170,7 +170,10 @@ export default function UserPortal({
         
         const newInquiry = {
             id: 'inq_' + Date.now().toString(36),
-            listingId: selectedContactListing.id,
+            listingId: selectedContactListing?.id || '',
+            listingTitle: selectedContactListing?.name || selectedContactListing?.title || '',
+            listingAddress: selectedContactListing?.displayAddress || selectedContactListing?.location || '',
+            listingPrice: selectedContactListing?.price || selectedContactListing?.rentAmount || '',
             userName: contactForm.name,
             userPhone: contactForm.phone,
             userAddress: contactForm.address,
@@ -179,21 +182,27 @@ export default function UserPortal({
         
         const updatedDatabase = {
             ...database,
-            inquiries: [...(database.inquiries || []), newInquiry]
+            inquiries: [newInquiry, ...(database.inquiries || [])]
         };
         
         setDatabase(updatedDatabase);
         
         try {
-            await saveFullDatabase(updatedDatabase);
+            await createEnquiry(newInquiry);
             showToast('Inquiry sent successfully to the owner!', 'success');
             setContactModalOpen(false);
             setContactForm({ name: '', phone: '', address: '' });
         } catch (err) {
-            console.error(err);
-            showToast('Failed to send inquiry', 'error');
-            // Revert state on failure
-            setDatabase(database);
+            console.error('API enquiry error, falling back to full database sync:', err);
+            try {
+                await saveFullDatabase(updatedDatabase);
+                showToast('Inquiry sent successfully to the owner!', 'success');
+                setContactModalOpen(false);
+                setContactForm({ name: '', phone: '', address: '' });
+            } catch (dbErr) {
+                showToast('Failed to send inquiry', 'error');
+                setDatabase(database);
+            }
         } finally {
             setIsSending(false);
         }
@@ -270,10 +279,10 @@ export default function UserPortal({
 
     const formatListingPrice = (loc) => {
         if (!loc) return null;
-        if (loc.category === 'bogithu' && loc.bogithuAmount && Number(loc.bogithuAmount) > 0) {
+        if ((loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease') && loc.bogithuAmount && Number(loc.bogithuAmount) > 0) {
             const amt = Number(loc.bogithuAmount);
-            const yrs = loc.bogithuYears ? ` for ${loc.bogithuYears} Years` : '';
-            return `₹${amt.toLocaleString('en-IN')}${yrs} (Lease)`;
+            const yrs = (loc.bogithuYears || loc.leaseDuration) ? ` for ${loc.bogithuYears || loc.leaseDuration} Years` : '';
+            return `₹${amt.toLocaleString('en-IN')}${yrs} (100% Refundable Lease)`;
         }
         if (loc.rentAmount && Number(loc.rentAmount) > 0) {
             return `₹${Number(loc.rentAmount).toLocaleString('en-IN')} / mo`;
@@ -439,12 +448,19 @@ export default function UserPortal({
             });
         }
 
-        // 2. Filter by transaction type (all, for_sale, for_rent, sold)
+        // 2. Filter by transaction type (all, for_sale, for_rent, for_lease, sold)
         if (advancedFilters.transactionType === 'for_rent') {
             results = results.filter(loc => {
                 const cat = (loc.category || '').toLowerCase();
                 const txn = (loc.transactionType || '').toLowerCase();
-                return txn === 'for_rent' || txn === 'lease' || Boolean(loc.rentAmount) || Boolean(loc.bogithuAmount) || ['rental_house', 'pg', 'room', 'bogithu'].includes(cat);
+                if (txn === 'for_lease' || txn === 'lease' || cat === 'bogithu') return false;
+                return txn === 'for_rent' || Boolean(loc.rentAmount) || ['rental_house', 'pg', 'room'].includes(cat);
+            });
+        } else if (advancedFilters.transactionType === 'for_lease') {
+            results = results.filter(loc => {
+                const cat = (loc.category || '').toLowerCase();
+                const txn = (loc.transactionType || '').toLowerCase();
+                return txn === 'for_lease' || txn === 'lease' || cat === 'bogithu' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0);
             });
         } else if (advancedFilters.transactionType === 'sold') {
             results = results.filter(loc => {
@@ -455,7 +471,7 @@ export default function UserPortal({
                 const cat = (loc.category || '').toLowerCase();
                 const txn = (loc.transactionType || '').toLowerCase();
                 if (txn === 'for_sale') return true;
-                if (txn === 'for_rent' || txn === 'lease') return false;
+                if (txn === 'for_rent' || txn === 'lease' || txn === 'for_lease') return false;
                 if (['rental_house', 'pg', 'room', 'bogithu'].includes(cat) && !loc.price) return false;
                 return true;
             });
@@ -503,6 +519,33 @@ export default function UserPortal({
         if (advancedFilters.tab === 'commercial' && advancedFilters.maxLand) {
             const maxL = Number(advancedFilters.maxLand);
             results = results.filter(loc => Number(loc.landArea || String(loc.sqft).replace(/,/g, '') || 0) <= maxL);
+        }
+
+        // 6. Filter by Furnishing (for rentals & lease)
+        if (advancedFilters.furnishing && advancedFilters.furnishing !== 'any') {
+            const fTarget = advancedFilters.furnishing.toLowerCase();
+            results = results.filter(loc => {
+                const furn = (loc.furnishing || '').toLowerCase();
+                return furn.includes(fTarget);
+            });
+        }
+
+        // 7. Filter by Preferred Tenants (for rent)
+        if (advancedFilters.preferredTenants && advancedFilters.preferredTenants !== 'any') {
+            const tTarget = advancedFilters.preferredTenants.toLowerCase();
+            results = results.filter(loc => {
+                const pref = (loc.preferredTenants || '').toLowerCase();
+                return pref.includes(tTarget) || pref.includes('any') || pref.includes('family or bachelors') || !pref;
+            });
+        }
+
+        // 7b. Filter by Lease Tenure / Duration (for lease)
+        if (advancedFilters.leaseYears && advancedFilters.leaseYears !== 'any') {
+            const targetYrs = Number(advancedFilters.leaseYears);
+            results = results.filter(loc => {
+                const yrs = Number(loc.bogithuYears || loc.leaseDuration || 0);
+                return yrs >= targetYrs;
+            });
         }
 
         return results;
@@ -769,14 +812,14 @@ export default function UserPortal({
         }
         if (!loc || !loc.id) return;
 
-        const baseUrl = window.location.origin + window.location.pathname;
-        const shareUrl = `${baseUrl}?property=${encodeURIComponent(loc.id)}`;
+        const baseUrl = window.location.origin;
+        const shareUrl = `${baseUrl}/properties/${encodeURIComponent(loc.id)}`;
 
         setCopiedPropertyId(loc.id);
         setTimeout(() => setCopiedPropertyId(null), 2500);
 
         const notifySuccess = () => {
-            if (showToast) showToast("Property share link copied to clipboard!", "success");
+            if (showToast) showToast("Property link copied to clipboard!", "success");
         };
 
         if (navigator.clipboard && window.isSecureContext !== false) {
@@ -822,32 +865,54 @@ export default function UserPortal({
         }
     };
 
-    // Handle deep linking from share URL parameters (?property=ID or #property=ID)
+    // Handle deep linking from URL routes (/properties/:id), query parameters (?property=ID), or hash (#property=ID)
     useEffect(() => {
         if (!allLocations || allLocations.length === 0) return;
 
-        const params = new URLSearchParams(window.location.search);
-        let targetId = params.get('property') || params.get('prop') || params.get('id');
+        let targetId = null;
 
+        // 1. Check pathname (e.g. /properties/sample-property-id or /property/123)
+        const path = window.location.pathname;
+        const pathMatch = path.match(/^\/(?:properties|property)\/([^\/?#]+)/i);
+        if (pathMatch && pathMatch[1]) {
+            targetId = pathMatch[1];
+        } else if (path === '/properties' || path === '/properties/') {
+            setIsDirectoryOpen(true);
+        }
+
+        // 2. Check query parameters (?property=ID, ?prop=ID, ?id=ID)
+        if (!targetId) {
+            const params = new URLSearchParams(window.location.search);
+            targetId = params.get('property') || params.get('prop') || params.get('id');
+        }
+
+        // 3. Check hash (#property=ID, #prop=ID, #/properties/:id)
         if (!targetId && window.location.hash) {
             const hash = window.location.hash;
             if (hash.includes('property=')) {
                 targetId = hash.split('property=')[1].split('&')[0];
             } else if (hash.includes('prop=')) {
                 targetId = hash.split('prop=')[1].split('&')[0];
+            } else {
+                const hashMatch = hash.match(/^#\/?(?:properties|property)\/([^\/?#]+)/i);
+                if (hashMatch && hashMatch[1]) {
+                    targetId = hashMatch[1];
+                }
             }
         }
 
         if (targetId) {
             const decodedId = decodeURIComponent(targetId);
-            const match = allLocations.find(l => String(l.id) === String(decodedId));
+            const match = allLocations.find(l => String(l.id).toLowerCase() === String(decodedId).toLowerCase()) ||
+                          allLocations.find(l => String(l.id) === String(decodedId));
             if (match) {
-                setActiveTab('search');
+                setIsDirectoryOpen(true);
                 setFocusedLocation(match);
-                if (showToast) showToast(`Displaying shared property: ${match.name || match.title || 'Selected Listing'}`, "info");
+                handleOpenPropertyDetails(match);
+                if (showToast) showToast(`Viewing property: ${match.name || match.title || 'Selected Listing'}`, "info");
             }
         }
-    }, [allLocations, showToast]);
+    }, [allLocations, showToast, handleOpenPropertyDetails]);
 
     // Keep state / district dropdowns valid
     const uniqueStates = useMemo(() => {
@@ -1288,7 +1353,7 @@ export default function UserPortal({
                                         
                                         let imgUrl = houseFallbacks[idx % 3];
                                         const raw = (loc.media && loc.media[0] && loc.media[0].url) || loc.image || '';
-                                        if (typeof raw === 'string' && raw.startsWith('http') && !raw.includes('avatar') && !raw.includes('pixel') && !raw.includes('svg') && !raw.includes('settlo') && !raw.includes('default') && !raw.includes('bolt') && !raw.includes('red')) {
+                                        if (typeof raw === 'string' && (raw.startsWith('http') || raw.startsWith('/')) && !raw.includes('avatar') && !raw.includes('pixel') && !raw.includes('svg') && !raw.includes('settlo') && !raw.includes('default') && !raw.includes('bolt') && !raw.includes('red')) {
                                             imgUrl = raw;
                                         }
 
@@ -1309,6 +1374,15 @@ export default function UserPortal({
                                                         decoding="async"
                                                         onError={(e) => { e.target.onerror = null; e.target.src = houseFallbacks[idx % 3]; }}
                                                     />
+                                                    {(loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0)) ? (
+                                                        <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: '#ffffff', padding: '3px 9px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 3 }}>
+                                                            📜 LEASE {loc.bogithuYears || loc.leaseDuration ? `(${loc.bogithuYears || loc.leaseDuration} YRS)` : ''}
+                                                        </div>
+                                                    ) : (loc.transactionType === 'for_rent' || (loc.rentAmount && Number(loc.rentAmount) > 0)) ? (
+                                                        <div style={{ position: 'absolute', top: '10px', left: '10px', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff', padding: '3px 9px', borderRadius: '6px', fontSize: '0.7rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 6px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '4px', zIndex: 3 }}>
+                                                            🔑 FOR RENT
+                                                        </div>
+                                                    ) : null}
                                                     <button 
                                                         className="realtor-listing-fav"
                                                         onClick={(e) => {
@@ -1348,9 +1422,27 @@ export default function UserPortal({
                                                         {loc.displayAddress || `${loc.district || 'Erode'}, ${loc.state || 'Tamil Nadu'}`}
                                                     </div>
                                                     <div className="realtor-listing-specs">
-                                                        <span>🛏️ {loc.beds || 3}</span>
-                                                        <span>🛁 {loc.baths || 2}</span>
-                                                        <span>📐 {loc.sqft || '1,200'} sqft</span>
+                                                        {(loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0)) ? (
+                                                            <>
+                                                                <span>⏳ {loc.bogithuYears || loc.leaseDuration || 1} Yrs Term</span>
+                                                                <span>📐 {loc.sqft || '1,000'} sqft</span>
+                                                                {loc.furnishing && <span style={{ color: '#7c3aed', fontWeight: 700 }}>🛋️ {loc.furnishing}</span>}
+                                                                <span style={{ color: '#16a34a', fontWeight: 700 }}>💰 ₹0/mo Rent</span>
+                                                            </>
+                                                        ) : (loc.transactionType === 'for_rent' || (loc.rentAmount && Number(loc.rentAmount) > 0)) ? (
+                                                            <>
+                                                                <span>🛏️ {loc.bhk || loc.beds || 2} BHK</span>
+                                                                <span>📐 {loc.sqft || '1,000'} sqft</span>
+                                                                {loc.furnishing && <span style={{ color: '#0284c7', fontWeight: 700 }}>🛋️ {loc.furnishing}</span>}
+                                                                {loc.depositAmount && <span style={{ color: '#059669', fontWeight: 700 }}>🛡️ Dep: ₹{Number(loc.depositAmount).toLocaleString('en-IN')}</span>}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span>🛏️ {loc.beds || 3} Beds</span>
+                                                                <span>🛁 {loc.baths || 2} Baths</span>
+                                                                <span>📐 {loc.sqft || '1,200'} sqft</span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1579,13 +1671,14 @@ export default function UserPortal({
                                         </button>
                                     </div>
 
-                                    {/* Expandable 3-Dot Filter Dropdowns Drawer */}
+                                     {/* Expandable 3-Dot Filter Dropdowns Drawer */}
                                     {isMobileFiltersOpen && (
                                         <div className="realtor-search-bar-grid" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '6px', paddingTop: '6px', borderTop: '1px solid #e2e8f0' }}>
                                             <select className="realtor-select" value={advancedFilters.transactionType} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, transactionType: e.target.value }))}>
                                                 <option value="all">All Properties</option>
-                                                <option value="for_sale">For Sale</option>
-                                                <option value="for_rent">For Rent / Lease</option>
+                                                <option value="for_sale">🏷️ For Sale</option>
+                                                <option value="for_rent">🔑 For Rent</option>
+                                                <option value="for_lease">📜 For Lease</option>
                                                 <option value="sold">Sold</option>
                                             </select>
 
@@ -1676,8 +1769,9 @@ export default function UserPortal({
 
                                     <select className="realtor-select" value={advancedFilters.transactionType} onChange={(e) => setAdvancedFilters(prev => ({ ...prev, transactionType: e.target.value }))}>
                                         <option value="all">All Properties</option>
-                                        <option value="for_sale">For Sale</option>
-                                        <option value="for_rent">For Rent / Lease</option>
+                                        <option value="for_sale">🏷️ For Sale</option>
+                                        <option value="for_rent">🔑 For Rent</option>
+                                        <option value="for_lease">📜 For Lease</option>
                                         <option value="sold">Sold</option>
                                     </select>
 
@@ -1873,6 +1967,15 @@ export default function UserPortal({
                                             >
                                                 <div style={{ position: 'relative' }}>
                                                     <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} loading="lazy" decoding="async" />
+                                                    {(loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0)) ? (
+                                                        <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: '#ffffff', padding: '2px 8px', borderRadius: '5px', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '3px', zIndex: 3 }}>
+                                                            📜 LEASE {loc.bogithuYears || loc.leaseDuration ? `(${loc.bogithuYears || loc.leaseDuration} YRS)` : ''}
+                                                        </div>
+                                                    ) : (loc.transactionType === 'for_rent' || (loc.rentAmount && Number(loc.rentAmount) > 0)) ? (
+                                                        <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff', padding: '2px 8px', borderRadius: '5px', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '3px', zIndex: 3 }}>
+                                                            🔑 FOR RENT
+                                                        </div>
+                                                    ) : null}
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
                                                     </button>
@@ -1904,9 +2007,27 @@ export default function UserPortal({
 
                                                     <div className="realtor-listing-location">{loc.displayAddress || `${loc.district || 'Area'}, ${loc.state || 'State'}`}</div>
                                                     <div className="realtor-listing-specs">
-                                                        <span>🛏️ {loc.beds || 3}</span>
-                                                        <span>🛁 {loc.baths || 2}</span>
-                                                        <span>📐 {loc.sqft || '1,200'} sqft</span>
+                                                        {(loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0)) ? (
+                                                            <>
+                                                                <span>⏳ {loc.bogithuYears || loc.leaseDuration || 1} Yrs Term</span>
+                                                                <span>📐 {loc.sqft || '1,000'} sqft</span>
+                                                                {loc.furnishing && <span style={{ color: '#7c3aed', fontWeight: 700 }}>🛋️ {loc.furnishing}</span>}
+                                                                <span style={{ color: '#16a34a', fontWeight: 700 }}>💰 ₹0/mo Rent</span>
+                                                            </>
+                                                        ) : (loc.transactionType === 'for_rent' || (loc.rentAmount && Number(loc.rentAmount) > 0)) ? (
+                                                            <>
+                                                                <span>🛏️ {loc.bhk || loc.beds || 2} BHK</span>
+                                                                <span>📐 {loc.sqft || '1,000'} sqft</span>
+                                                                {loc.furnishing && <span style={{ color: '#0284c7', fontWeight: 700 }}>🛋️ {loc.furnishing}</span>}
+                                                                {loc.depositAmount && <span style={{ color: '#059669', fontWeight: 700 }}>🛡️ Dep: ₹{Number(loc.depositAmount).toLocaleString('en-IN')}</span>}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span>🛏️ {loc.beds || 3}</span>
+                                                                <span>🛁 {loc.baths || 2}</span>
+                                                                <span>📐 {loc.sqft || '1,200'} sqft</span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1972,6 +2093,15 @@ export default function UserPortal({
                                             >
                                                 <div style={{ position: 'relative' }}>
                                                     <img className="realtor-listing-card-img" src={loc.media && loc.media[0] ? loc.media[0].url : loc.image || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=600&q=80'} alt={loc.name} loading="lazy" decoding="async" />
+                                                    {(loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0)) ? (
+                                                        <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: '#ffffff', padding: '2px 8px', borderRadius: '5px', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '3px', zIndex: 3 }}>
+                                                            📜 LEASE {loc.bogithuYears || loc.leaseDuration ? `(${loc.bogithuYears || loc.leaseDuration} YRS)` : ''}
+                                                        </div>
+                                                    ) : (loc.transactionType === 'for_rent' || (loc.rentAmount && Number(loc.rentAmount) > 0)) ? (
+                                                        <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff', padding: '2px 8px', borderRadius: '5px', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '3px', zIndex: 3 }}>
+                                                            🔑 FOR RENT
+                                                        </div>
+                                                    ) : null}
                                                     <button className="realtor-listing-fav" onClick={(e) => { e.stopPropagation(); if (!authUser) { handleGoogleLogin(); return; } toggleFavorite(loc.id); }}>
                                                         <Heart size={16} fill={isFavorite(loc.id) ? "#921214" : "none"} color={isFavorite(loc.id) ? "#921214" : "#64748b"} />
                                                     </button>
@@ -2003,9 +2133,27 @@ export default function UserPortal({
 
                                                     <div className="realtor-listing-location">{loc.displayAddress || `${loc.district || 'Area'}, ${loc.state || 'State'}`}</div>
                                                     <div className="realtor-listing-specs">
-                                                        <span>🛏️ {loc.beds || 3}</span>
-                                                        <span>🛁 {loc.baths || 2}</span>
-                                                        <span>📐 {loc.sqft || '1,200'} sqft</span>
+                                                        {(loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0)) ? (
+                                                            <>
+                                                                <span>⏳ {loc.bogithuYears || loc.leaseDuration || 1} Yrs Term</span>
+                                                                <span>📐 {loc.sqft || '1,000'} sqft</span>
+                                                                {loc.furnishing && <span style={{ color: '#7c3aed', fontWeight: 700 }}>🛋️ {loc.furnishing}</span>}
+                                                                <span style={{ color: '#16a34a', fontWeight: 700 }}>💰 ₹0/mo Rent</span>
+                                                            </>
+                                                        ) : (loc.transactionType === 'for_rent' || (loc.rentAmount && Number(loc.rentAmount) > 0)) ? (
+                                                            <>
+                                                                <span>🛏️ {loc.bhk || loc.beds || 2} BHK</span>
+                                                                <span>📐 {loc.sqft || '1,000'} sqft</span>
+                                                                {loc.furnishing && <span style={{ color: '#0284c7', fontWeight: 700 }}>🛋️ {loc.furnishing}</span>}
+                                                                {loc.depositAmount && <span style={{ color: '#059669', fontWeight: 700 }}>🛡️ Dep: ₹{Number(loc.depositAmount).toLocaleString('en-IN')}</span>}
+                                                            </>
+                                                        ) : (
+                                                            <>
+                                                                <span>🛏️ {loc.beds || 3} Beds</span>
+                                                                <span>🛁 {loc.baths || 2} Baths</span>
+                                                                <span>📐 {loc.sqft || '1,200'} sqft</span>
+                                                            </>
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -2119,7 +2267,7 @@ export default function UserPortal({
 
                             try {
                                 setDatabase(newDb);
-                                await saveFullDatabase(newDb);
+                                await createEnquiry(newInquiry);
                                 showToast("✅ Inquiry submitted successfully! The property owner will be notified.", "success");
                                 setContactModalOpen(false);
                                 setInqFirstNameVal('');
@@ -2127,8 +2275,13 @@ export default function UserPortal({
                                 setInqPhoneVal('');
                                 setInqEmailVal('');
                             } catch (err) {
-                                console.error("Error saving inquiry", err);
-                                showToast("Inquiry submitted successfully!", "success");
+                                console.error("Error saving inquiry via API, falling back to full db save:", err);
+                                try {
+                                    await saveFullDatabase(newDb);
+                                    showToast("✅ Inquiry submitted successfully!", "success");
+                                } catch (dbErr) {
+                                    showToast("Inquiry submitted locally.", "success");
+                                }
                                 setContactModalOpen(false);
                             } finally {
                                 setIsSending(false);

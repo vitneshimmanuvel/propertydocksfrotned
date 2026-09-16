@@ -276,7 +276,7 @@ export default function SidebarRight({
                                             <option value="rental_house">Rental House</option>
                                             <option value="pg">PG Accommodation</option>
                                             <option value="room">Room</option>
-                                            <option value="bogithu">Bogithu (Lease)</option>
+                                            <option value="bogithu">Lease</option>
                                             <option value="road">Roadway</option>
                                             <option value="park">Park / Greenery</option>
                                             <option value="amenity">Amenity / Utility</option>

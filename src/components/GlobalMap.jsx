@@ -37,10 +37,13 @@ const formatRelativeTime = (dateInput) => {
 const getShortPriceLabel = (loc) => {
     if (!loc) return null;
     let amt = null;
+    let suffix = '';
     if (loc.category === 'bogithu' && loc.bogithuAmount && Number(loc.bogithuAmount) > 0) {
         amt = Number(loc.bogithuAmount);
+        suffix = ' (Lease)';
     } else if (loc.rentAmount && Number(loc.rentAmount) > 0) {
         amt = Number(loc.rentAmount);
+        suffix = '/mo';
     } else if (loc.price && Number(loc.price) > 0) {
         amt = Number(loc.price);
     }
@@ -49,16 +52,17 @@ const getShortPriceLabel = (loc) => {
         return null;
     }
 
+    let formatted = '';
     if (amt >= 10000000) {
-        return `₹${(amt / 10000000).toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '')}Cr`;
+        formatted = `₹${(amt / 10000000).toFixed(2).replace(/\.00$/, '').replace(/\.0$/, '')}Cr`;
+    } else if (amt >= 100000) {
+        formatted = `₹${(amt / 100000).toFixed(1).replace(/\.0$/, '')}L`;
+    } else if (amt >= 1000) {
+        formatted = `₹${(amt / 1000).toFixed(0)}K`;
+    } else {
+        formatted = `₹${amt.toLocaleString('en-IN')}`;
     }
-    if (amt >= 100000) {
-        return `₹${(amt / 100000).toFixed(1).replace(/\.0$/, '')}L`;
-    }
-    if (amt >= 1000) {
-        return `₹${(amt / 1000).toFixed(0)}K`;
-    }
-    return `₹${amt.toLocaleString('en-IN')}`;
+    return `${formatted}${suffix}`;
 };
 
 // Open Google Maps driving navigation from user's current GPS location or direct to destination in external tab/app
@@ -632,10 +636,10 @@ export default function GlobalMap({
     // Helper to format property price accurately in INR without fake fallbacks (returns null if empty)
     const getFormattedPrice = (loc) => {
         if (!loc) return null;
-        if (loc.category === 'bogithu' && loc.bogithuAmount && Number(loc.bogithuAmount) > 0) {
+        if ((loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease') && loc.bogithuAmount && Number(loc.bogithuAmount) > 0) {
             const amt = Number(loc.bogithuAmount);
-            const yrs = loc.bogithuYears ? ` for ${loc.bogithuYears} Years` : '';
-            return `₹${amt.toLocaleString('en-IN')}${yrs} (Lease)`;
+            const yrs = (loc.bogithuYears || loc.leaseDuration) ? ` for ${loc.bogithuYears || loc.leaseDuration} Years` : '';
+            return `₹${amt.toLocaleString('en-IN')}${yrs} (100% Refundable Lease)`;
         }
         if (loc.rentAmount && Number(loc.rentAmount) > 0) {
             return `₹${Number(loc.rentAmount).toLocaleString('en-IN')} / month`;
@@ -1054,6 +1058,16 @@ export default function GlobalMap({
                                                     <svg width="15" height="15" viewBox="0 0 24 24" fill={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "none"} stroke={isFavorite && isFavorite(selectedLocation.id) ? "#921214" : "#64748b"} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"></path></svg>
                                                 </div>
 
+                                                {(selectedLocation.category === 'bogithu' || selectedLocation.transactionType === 'for_lease' || selectedLocation.transactionType === 'lease' || (selectedLocation.bogithuAmount && Number(selectedLocation.bogithuAmount) > 0)) ? (
+                                                    <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'linear-gradient(135deg, #7c3aed, #6d28d9)', color: '#ffffff', padding: '3px 8px', borderRadius: '5px', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '3px', zIndex: 12 }}>
+                                                        📜 LEASE {selectedLocation.bogithuYears || selectedLocation.leaseDuration ? `(${selectedLocation.bogithuYears || selectedLocation.leaseDuration} YRS)` : ''}
+                                                    </div>
+                                                ) : (selectedLocation.transactionType === 'for_rent' || (selectedLocation.rentAmount && Number(selectedLocation.rentAmount) > 0)) ? (
+                                                    <div style={{ position: 'absolute', top: '8px', left: '8px', background: 'linear-gradient(135deg, #0284c7, #0369a1)', color: '#ffffff', padding: '3px 8px', borderRadius: '5px', fontSize: '0.68rem', fontWeight: 800, letterSpacing: '0.5px', textTransform: 'uppercase', boxShadow: '0 2px 5px rgba(0,0,0,0.3)', display: 'flex', alignItems: 'center', gap: '3px', zIndex: 12 }}>
+                                                        🔑 FOR RENT
+                                                    </div>
+                                                ) : null}
+
                                                 <div style={{ position: 'absolute', bottom: '6px', left: '6px', background: 'rgba(15, 23, 42, 0.75)', color: '#fff', fontSize: '0.65rem', padding: '2px 6px', borderRadius: '3px', backdropFilter: 'blur(4px)', fontWeight: 600 }}>
                                                     {activeMediaIndex + 1}/{mediaList.length} Photos
                                                 </div>
@@ -1075,16 +1089,39 @@ export default function GlobalMap({
                                                     {selectedLocation.displayAddress || selectedLocation.area || `${selectedLocation.district || 'Erode'}, Tamil Nadu`}
                                                 </p>
 
-                                                <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '0.72rem', color: '#475569', margin: '4px 0 6px 0', fontWeight: 600 }}>
-                                                    <span>🛏️ {selectedLocation.beds || 3} Beds</span>
-                                                    <span>🛁 {selectedLocation.baths || 2} Baths</span>
-                                                    <span>📐 {selectedLocation.sqft || '1,200'} sqft</span>
+                                                <div style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '8px', fontSize: '0.72rem', color: '#475569', margin: '4px 0 6px 0', fontWeight: 600 }}>
+                                                    {(selectedLocation.category === 'bogithu' || selectedLocation.transactionType === 'for_lease' || selectedLocation.transactionType === 'lease' || (selectedLocation.bogithuAmount && Number(selectedLocation.bogithuAmount) > 0)) ? (
+                                                        <>
+                                                            <span>⏳ {selectedLocation.bogithuYears || selectedLocation.leaseDuration || 1} Yrs Term</span>
+                                                            <span>📐 {selectedLocation.sqft || '1,000'} sqft</span>
+                                                            {selectedLocation.furnishing && <span style={{ color: '#7c3aed', fontWeight: 700 }}>🛋️ {selectedLocation.furnishing}</span>}
+                                                            <span style={{ color: '#16a34a', fontWeight: 700 }}>💰 ₹0/mo Rent</span>
+                                                        </>
+                                                    ) : (selectedLocation.transactionType === 'for_rent' || (selectedLocation.rentAmount && Number(selectedLocation.rentAmount) > 0)) ? (
+                                                        <>
+                                                            <span>🛏️ {selectedLocation.bhk || selectedLocation.beds || 2} BHK</span>
+                                                            <span>📐 {selectedLocation.sqft || '1,000'} sqft</span>
+                                                            {selectedLocation.furnishing && <span style={{ color: '#0284c7', fontWeight: 700 }}>🛋️ {selectedLocation.furnishing}</span>}
+                                                            {selectedLocation.depositAmount && <span style={{ color: '#059669', fontWeight: 700 }}>🛡️ Dep: ₹{Number(selectedLocation.depositAmount).toLocaleString('en-IN')}</span>}
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <span>🛏️ {selectedLocation.beds || 3} Beds</span>
+                                                            <span>🛁 {selectedLocation.baths || 2} Baths</span>
+                                                            <span>📐 {selectedLocation.sqft || '1,200'} sqft</span>
+                                                        </>
+                                                    )}
                                                 </div>
                                                 
-                                                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-start', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #f1f5f9' }}>
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'flex-start', marginTop: '4px', paddingTop: '4px', borderTop: '1px solid #f1f5f9' }}>
                                                     <span style={{ fontSize: '0.68rem', color: '#921214', background: 'rgba(146, 18, 20, 0.08)', padding: '2px 8px', borderRadius: '10px', textTransform: 'capitalize', fontWeight: 700 }}>
                                                         {(selectedLocation.category || 'residential').replace('_', ' ')}
                                                     </span>
+                                                    {(selectedLocation.transactionType === 'for_rent' || (selectedLocation.rentAmount && Number(selectedLocation.rentAmount) > 0)) && (
+                                                        <span style={{ fontSize: '0.68rem', color: '#0284c7', background: 'rgba(2, 132, 199, 0.1)', padding: '2px 8px', borderRadius: '10px', fontWeight: 700 }}>
+                                                            Rental
+                                                        </span>
+                                                    )}
                                                 </div>
 
                                                 {/* Action Buttons Row including In-App Drive Route */}
