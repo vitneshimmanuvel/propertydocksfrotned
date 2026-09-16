@@ -934,7 +934,21 @@ export default function GlobalMap({
                     {filteredLocations.map((loc) => {
                         const isSelected = selectedLocation && String(selectedLocation.id) === String(loc.id);
                         const isHovered = hoveredLocation && String(hoveredLocation.id) === String(loc.id);
-                        const propertyInitial = (loc.name || loc.title || 'P').trim().charAt(0).toUpperCase();
+                        
+                        const isLease = loc.category === 'bogithu' || loc.transactionType === 'for_lease' || loc.transactionType === 'lease' || (loc.bogithuAmount && Number(loc.bogithuAmount) > 0);
+                        const isRent = !isLease && (loc.transactionType === 'for_rent' || (loc.rentAmount && Number(loc.rentAmount) > 0) || loc.category === 'apartment' || loc.category === 'villa' || loc.category === 'builder_floor' || loc.category === 'house');
+                        const isSale = loc.transactionType === 'for_sale' || (loc.price && Number(loc.price) > 0 && !loc.rentAmount);
+
+                        let propertyInitial = 'R';
+                        if (isLease) {
+                            propertyInitial = 'L';
+                        } else if (isRent) {
+                            propertyInitial = 'R';
+                        } else if (isSale) {
+                            propertyInitial = 'S';
+                        } else {
+                            propertyInitial = 'R';
+                        }
 
                         return (
                             <Marker 
